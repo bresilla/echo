@@ -3,7 +3,7 @@ const std = @import("std");
 // ==================================================================================================
 // Project configuration
 // ==================================================================================================
-const PROJECT_NAME = "datapod";
+const PROJECT_NAME = "echo";
 
 // Dependencies are defined in build.zig.zon:
 //   .dependencies = .{
