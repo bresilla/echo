@@ -76,14 +76,19 @@ namespace echo {
         // Type traits for detecting print methods
         // =================================================================================================
 
-        template <typename T, typename = void> struct has_pretty_print : std::false_type {};
+        template <typename T, typename = void> struct has_pretty : std::false_type {};
 
         template <typename T>
-        struct has_pretty_print<T, std::void_t<decltype(std::declval<T>().pretty_print())>> : std::true_type {};
+        struct has_pretty<T, std::void_t<decltype(std::declval<T>().pretty())>> : std::true_type {};
 
         template <typename T, typename = void> struct has_print : std::false_type {};
 
         template <typename T> struct has_print<T, std::void_t<decltype(std::declval<T>().print())>> : std::true_type {};
+
+        template <typename T, typename = void> struct has_to_string : std::false_type {};
+
+        template <typename T>
+        struct has_to_string<T, std::void_t<decltype(std::declval<T>().to_string())>> : std::true_type {};
 
         template <typename T, typename = void> struct is_streamable : std::false_type {};
 
@@ -95,11 +100,13 @@ namespace echo {
         // Convert value to string
         // =================================================================================================
 
-        template <typename T> inline std::string to_string(const T &value) {
-            if constexpr (has_pretty_print<T>::value) {
-                return value.pretty_print();
+        template <typename T> inline std::string stringify(const T &value) {
+            if constexpr (has_pretty<T>::value) {
+                return value.pretty();
             } else if constexpr (has_print<T>::value) {
                 return value.print();
+            } else if constexpr (has_to_string<T>::value) {
+                return value.to_string();
             } else if constexpr (std::is_same_v<T, std::string>) {
                 return value;
             } else if constexpr (std::is_same_v<T, const char *> || std::is_same_v<T, char *>) {
@@ -165,7 +172,7 @@ namespace echo {
 
         template <typename T, typename... Args>
         inline void append_args(std::ostringstream &oss, const T &first, const Args &...rest) {
-            oss << to_string(first);
+            oss << stringify(first);
             append_args(oss, rest...);
         }
 

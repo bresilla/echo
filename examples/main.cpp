@@ -17,8 +17,16 @@ struct Vector3 {
         return "Vec3[" + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z) + "]";
     }
 
-    std::string pretty_print() const {
+    std::string pretty() const {
         return "Vector3 { x: " + std::to_string(x) + ", y: " + std::to_string(y) + ", z: " + std::to_string(z) + " }";
+    }
+};
+
+struct Color {
+    int r, g, b;
+
+    std::string to_string() const {
+        return "rgb(" + std::to_string(r) + ", " + std::to_string(g) + ", " + std::to_string(b) + ")";
     }
 };
 
@@ -36,7 +44,10 @@ int main() {
     echo::info("Point with print(): ", p);
 
     Vector3 v{1.0f, 2.0f, 3.0f};
-    echo::info("Vector3 with pretty_print() (preferred): ", v);
+    echo::info("Vector3 with pretty() (preferred over print): ", v);
+
+    Color c{255, 128, 0};
+    echo::info("Color with to_string(): ", c);
 
     echo::debug("Current log level: ", static_cast<int>(echo::current_level()));
 
