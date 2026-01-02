@@ -68,30 +68,7 @@ namespace echo {
         ASCII,   // +--+ | | +--+
     };
 
-    namespace detail {
-
-        // =================================================================================================
-        // Terminal width detection
-        // =================================================================================================
-
-        inline int get_terminal_width() {
-#ifdef _WIN32
-            // Windows implementation would go here
-            // CONSOLE_SCREEN_BUFFER_INFO csbi;
-            // if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) {
-            //     return csbi.srWindow.Right - csbi.srWindow.Left + 1;
-            // }
-            return 80; // Fallback for Windows
-#else
-            struct winsize w;
-            if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0 && w.ws_col > 0) {
-                return w.ws_col;
-            }
-            return 80; // Fallback
-#endif
-        }
-
-    } // namespace detail
+    namespace detail {} // namespace detail
 
     // =================================================================================================
     // Separator functions

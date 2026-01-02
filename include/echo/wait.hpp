@@ -45,6 +45,11 @@
 #include <string>
 #include <vector>
 
+#ifndef _WIN32
+#include <sys/ioctl.h>
+#include <unistd.h>
+#endif
+
 namespace echo {
 
     // =================================================================================================
@@ -302,7 +307,7 @@ namespace echo {
       private:
         size_t current_ = 0;
         size_t total_ = 100;
-        int bar_width_ = 50;
+        int bar_width_ = -1; // -1 means auto (full terminal width)
         std::string fill_str_ = "=";
         std::string lead_str_ = ">";
         std::string remainder_str_ = " ";
@@ -474,6 +479,45 @@ namespace echo {
             display();
         }
 
+        int calculate_bar_width() const {
+            if (bar_width_ > 0) {
+                return bar_width_; // User-specified width
+            }
+
+            // Auto-calculate based on terminal width
+            int term_width = detail::get_terminal_width();
+            int used_width = 0;
+
+            // Account for prefix
+            if (!prefix_.empty()) {
+                used_width += prefix_.length() + 1; // +1 for space
+            }
+
+            // Account for bar brackets
+            used_width += bar_start_.length() + bar_end_.length();
+
+            // Account for percentage or bytes
+            if (show_bytes_) {
+                used_width += 30; // Estimate for "XXX.XX MB / XXX.XX MB"
+            } else if (show_percentage_) {
+                used_width += 5; // " 100%"
+            }
+
+            // Account for time/speed display
+            if (show_elapsed_ || show_remaining_ || show_speed_) {
+                used_width += 20; // Estimate for " [1m30s<2m15s, 1.2 MB/s]"
+            }
+
+            // Account for postfix
+            if (!postfix_.empty()) {
+                used_width += postfix_.length() + 1; // +1 for space
+            }
+
+            // Calculate remaining width for the bar, with minimum of 20
+            int available = term_width - used_width;
+            return available > 20 ? available : 20;
+        }
+
         void display() {
             if (!started_) {
                 started_ = true;
@@ -488,26 +532,29 @@ namespace echo {
                 std::cout << prefix_ << " ";
             }
 
+            // Calculate actual bar width
+            int actual_bar_width = calculate_bar_width();
+
             // Calculate progress
             float progress = total_ > 0 ? static_cast<float>(current_) / static_cast<float>(total_) : 0.0f;
-            int filled = static_cast<int>(progress * bar_width_);
+            int filled = static_cast<int>(progress * actual_bar_width);
 
             // Bar
             std::cout << bar_start_;
 
             // For smooth style, use sub-block characters for fractional progress
-            if (bar_style_ == BarStyle::Smooth && filled < bar_width_) {
+            if (bar_style_ == BarStyle::Smooth && filled < actual_bar_width) {
                 const std::string smooth_chars[] = {"", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"};
-                float exact_filled = progress * bar_width_;
+                float exact_filled = progress * actual_bar_width;
                 int whole_filled = static_cast<int>(exact_filled);
                 float fraction = exact_filled - whole_filled;
                 int smooth_index = static_cast<int>(fraction * 8);
 
-                for (int i = 0; i < bar_width_; ++i) {
+                for (int i = 0; i < actual_bar_width; ++i) {
                     std::string color_code;
                     if (!gradient_colors_.empty()) {
                         if (use_gradient_) {
-                            float pos = static_cast<float>(i) / static_cast<float>(bar_width_ - 1);
+                            float pos = static_cast<float>(i) / static_cast<float>(actual_bar_width - 1);
                             color_code = detail::get_gradient_color(gradient_colors_, pos);
                         } else {
                             color_code = detail::get_single_color(gradient_colors_[0]);
@@ -524,11 +571,11 @@ namespace echo {
                 }
             } else {
                 // Standard rendering for other styles
-                for (int i = 0; i < bar_width_; ++i) {
+                for (int i = 0; i < actual_bar_width; ++i) {
                     std::string color_code;
                     if (!gradient_colors_.empty()) {
                         if (use_gradient_) {
-                            float pos = static_cast<float>(i) / static_cast<float>(bar_width_ - 1);
+                            float pos = static_cast<float>(i) / static_cast<float>(actual_bar_width - 1);
                             color_code = detail::get_gradient_color(gradient_colors_, pos);
                         } else {
                             color_code = detail::get_single_color(gradient_colors_[0]);
@@ -537,7 +584,7 @@ namespace echo {
 
                     if (i < filled - 1) {
                         std::cout << color_code << fill_str_ << detail::reset_color();
-                    } else if (i == filled - 1 && filled < bar_width_ && !lead_str_.empty()) {
+                    } else if (i == filled - 1 && filled < actual_bar_width && !lead_str_.empty()) {
                         std::cout << color_code << lead_str_ << detail::reset_color();
                     } else if (i >= filled) {
                         std::cout << remainder_str_;
