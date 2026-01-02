@@ -14,10 +14,14 @@
  *   echo::separator("Section 1");         // Centered text
  *   echo::separator("IMPORTANT", '=');    // Custom character
  *
+ *   echo::box("Hello World");             // Box with single lines
+ *   echo::box("Title", BoxStyle::Double); // Box with double lines
+ *   echo::box("Info", BoxStyle::Rounded); // Box with rounded corners
+ *
  * Features:
  *   - Terminal-aware separators (auto-detects width)
  *   - Centered text with customizable separator characters
- *   - More fancy banners coming soon!
+ *   - Unicode box drawing with multiple styles
  */
 
 #include <echo/echo.hpp>
@@ -32,6 +36,16 @@
 #endif
 
 namespace echo {
+
+    // =================================================================================================
+    // Box styles
+    // =================================================================================================
+
+    enum class BoxStyle {
+        Single,  // ┌─┐ │ └─┘
+        Double,  // ╔═╗ ║ ╚═╝
+        Rounded, // ╭─╮ │ ╰─╯
+    };
 
     namespace detail {
 
@@ -93,6 +107,82 @@ namespace echo {
                           << "\n";
             }
         }
+    }
+
+    // =================================================================================================
+    // Box functions
+    // =================================================================================================
+
+    /**
+     * @brief Draw a box around text
+     * @param text Text to display in the box
+     * @param style Box style (Single, Double, or Rounded)
+     *
+     * Examples:
+     *   box("Hello");                    // ┌───────┐
+     *                                    // │ Hello │
+     *                                    // └───────┘
+     *
+     *   box("Title", BoxStyle::Double);  // ╔═══════╗
+     *                                    // ║ Title ║
+     *                                    // ╚═══════╝
+     *
+     *   box("Info", BoxStyle::Rounded);  // ╭──────╮
+     *                                    // │ Info │
+     *                                    // ╰──────╯
+     */
+    inline void box(const std::string &text, BoxStyle style = BoxStyle::Single) {
+        // Box drawing characters for each style
+        const char *top_left, *top_right, *bottom_left, *bottom_right;
+        const char *horizontal, *vertical;
+
+        switch (style) {
+        case BoxStyle::Single:
+            top_left = "┌";
+            top_right = "┐";
+            bottom_left = "└";
+            bottom_right = "┘";
+            horizontal = "─";
+            vertical = "│";
+            break;
+        case BoxStyle::Double:
+            top_left = "╔";
+            top_right = "╗";
+            bottom_left = "╚";
+            bottom_right = "╝";
+            horizontal = "═";
+            vertical = "║";
+            break;
+        case BoxStyle::Rounded:
+            top_left = "╭";
+            top_right = "╮";
+            bottom_left = "╰";
+            bottom_right = "╯";
+            horizontal = "─";
+            vertical = "│";
+            break;
+        }
+
+        // Calculate box width (text + 2 spaces padding + 2 borders)
+        int text_width = text.length();
+        int box_width = text_width + 2; // 1 space on each side
+
+        // Top border
+        std::cout << top_left;
+        for (int i = 0; i < box_width; ++i) {
+            std::cout << horizontal;
+        }
+        std::cout << top_right << "\n";
+
+        // Middle with text
+        std::cout << vertical << " " << text << " " << vertical << "\n";
+
+        // Bottom border
+        std::cout << bottom_left;
+        for (int i = 0; i < box_width; ++i) {
+            std::cout << horizontal;
+        }
+        std::cout << bottom_right << "\n";
     }
 
 } // namespace echo
