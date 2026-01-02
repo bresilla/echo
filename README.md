@@ -12,7 +12,7 @@
 - 🧵 **Thread-safe** - Safe concurrent logging
 - 📊 **Structured logging** - Key-value pairs support
 - 🎯 **Custom types** - Log your own types easily
-- 📏 **Smart separators** - Terminal-aware visual separators
+- 📏 **Visual elements** - Separators, boxes, headers, and banners (optional `banner.hpp`)
 
 ## Quick Start
 
@@ -180,7 +180,15 @@ for (int i = 0; i < 10; ++i) {
 for (auto& t : threads) t.join();
 ```
 
-### Separators
+### Visual Elements (banner.hpp)
+
+Echo provides optional visual elements for organizing your log output. Include `<echo/banner.hpp>` to access these features (it automatically includes `echo.hpp`):
+
+```cpp
+#include <echo/banner.hpp>  // Includes echo.hpp automatically
+```
+
+#### Separators
 
 Create visual separators that automatically adapt to your terminal width:
 
@@ -196,12 +204,79 @@ echo::separator("Section 1");
 // Custom separator character
 echo::separator("IMPORTANT", '=');
 // Output: =================================[ IMPORTANT ]==================================
-
-echo::separator("Configuration", '*');
-// Output: *******************************[ Configuration ]********************************
 ```
 
-The separator automatically detects your terminal width and adjusts accordingly. Perfect for visually organizing log output into sections!
+#### Boxes
+
+Draw boxes around text with multiple Unicode styles:
+
+```cpp
+echo::box("Hello World");                    // Single line (default)
+echo::box("Title", echo::BoxStyle::Double);  // Double line
+echo::box("Info", echo::BoxStyle::Rounded);  // Rounded corners
+echo::box("Alert", echo::BoxStyle::Heavy);   // Heavy/bold lines
+echo::box("Note", echo::BoxStyle::Dashed);   // Dashed lines
+echo::box("Plain", echo::BoxStyle::ASCII);   // ASCII (compatible)
+```
+
+Output:
+```
+┌─────────────┐
+│ Hello World │
+└─────────────┘
+
+╔═══════╗
+║ Title ║
+╚═══════╝
+
+╭──────╮
+│ Info │
+╰──────╯
+```
+
+#### Headers and Titles
+
+Create fancy headers and centered titles:
+
+```cpp
+// Fancy header with double lines
+echo::header("Application Started");
+// Output:
+// ╔════════════════════════════════════════╗
+// ║       Application Started              ║
+// ╚════════════════════════════════════════╝
+
+// Centered title with borders
+echo::title("My Application");
+// Output:
+// ========================================
+//          My Application
+// ========================================
+
+// Custom border character
+echo::title("Section", '-');
+```
+
+#### Banners
+
+Large decorative banners for important messages:
+
+```cpp
+echo::banner("WELCOME");                        // Heavy style (default)
+echo::banner("SUCCESS", echo::BoxStyle::Double); // Double line
+echo::banner("ERROR", echo::BoxStyle::Rounded);  // Rounded corners
+```
+
+Output:
+```
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃                                        ┃
+┃              WELCOME                   ┃
+┃                                        ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+```
+
+All visual elements automatically detect your terminal width and adjust accordingly. Perfect for organizing log output into clear, visually distinct sections!
 
 ## Building and Testing
 
