@@ -1,29 +1,23 @@
-# Echo 🎵
+# Echo
 
-> **A modern, beautiful C++20+ header-only logging library**  
-> Simple. Colorful. Powerful. Zero dependencies.
+**A modern C++20+ header-only logging library with visual elements and progress indicators.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
 [![Header-Only](https://img.shields.io/badge/header--only-yes-green.svg)](https://github.com/robolibs/echo)
 
----
+## Features
 
-## ✨ Features at a Glance
+- **Header-only** - Just include and use, no linking required
+- **Colored output** - Automatic coloring for log levels, HEX color support with gradients
+- **Progress bars** - 6 visual styles, auto-sizing, byte/speed formatting, themes
+- **Visual elements** - Boxes, banners, separators with Unicode art
+- **Zero overhead** - Compile-time log levels eliminate runtime cost
+- **Thread-safe** - Concurrent logging without corruption
+- **Flexible** - Runtime control, structured logging, custom types
+- **No dependencies** - Standard library only
 
-| Feature | Description |
-|---------|-------------|
-| 🎨 **Beautiful Output** | Colored logs, HEX color support, gradients |
-| 📊 **Progress Bars** | 6 styles, auto-sizing, byte/speed formatting |
-| 🎯 **Visual Elements** | Boxes, banners, separators with Unicode art |
-| ⚡ **Zero Overhead** | Compile-time log levels, header-only |
-| 🧵 **Thread-Safe** | Concurrent logging without corruption |
-| 🔧 **Flexible** | Runtime control, structured logging, custom types |
-| 📦 **No Dependencies** | Standard library only, works everywhere |
-
----
-
-## 🚀 Quick Start
+## Quick Start
 
 ```cpp
 #include <echo/echo.hpp>
@@ -36,20 +30,11 @@ int main() {
 }
 ```
 
-**Output:**
-```
-[info] Hello, world!
-[debug] Value: 42
-[error] Something went wrong!
-```
+## Installation
 
----
+### Header-Only
 
-## 📦 Installation
-
-### Header-Only (Simplest)
-
-Just copy the headers to your project:
+Copy the headers to your project:
 
 ```bash
 cp -r include/echo /path/to/your/project/include/
@@ -68,38 +53,24 @@ FetchContent_MakeAvailable(echo)
 target_link_libraries(your_target echo::echo)
 ```
 
-### Manual
-
-```bash
-git clone https://github.com/robolibs/echo.git
-# Add echo/include to your include path
-```
-
----
-
-## 📚 Core Logging
+## Core Logging
 
 ### Log Levels
 
-Six log levels with automatic coloring:
-
 ```cpp
-echo::trace("Detailed trace information");    // Gray
-echo::debug("Debug information");             // Cyan
-echo::info("General information");            // Green
-echo::warn("Warning message");                // Yellow
-echo::error("Error occurred");                // Red
-echo::critical("Critical failure!");          // Magenta
+echo::trace("Detailed trace information");
+echo::debug("Debug information");
+echo::info("General information");
+echo::warn("Warning message");
+echo::error("Error occurred");
+echo::critical("Critical failure!");
 ```
 
 ### Multiple Arguments
 
-Log anything, anywhere:
-
 ```cpp
 echo::info("User: ", username, " logged in at ", timestamp);
 echo::debug("Position: x=", x, " y=", y, " z=", z);
-echo::error("Failed to open file: ", filename, " (error: ", errno, ")");
 ```
 
 ### Compile-Time Control
@@ -107,25 +78,21 @@ echo::error("Failed to open file: ", filename, " (error: ", errno, ")");
 Zero overhead for disabled log levels:
 
 ```cpp
-#define LOGLEVEL Debug  // Only Debug and above
+#define LOGLEVEL Debug
 #include <echo/echo.hpp>
 
 echo::trace("This is compiled out!");  // No runtime cost
-echo::debug("This appears");           // Included
+echo::debug("This appears");
 ```
 
 Available levels: `Trace`, `Debug`, `Info`, `Warn`, `Error`, `Critical`, `Off`
 
 ### Runtime Control
 
-Change levels on the fly:
-
 ```cpp
-echo::set_level(echo::Level::Warn);  // Only warnings and errors
-echo::info("Hidden");                // Filtered out
-echo::error("Visible");              // Shown
-
-auto level = echo::get_level();      // Query current level
+echo::set_level(echo::Level::Warn);
+echo::info("Hidden");
+echo::error("Visible");
 ```
 
 ### Timestamps
@@ -140,24 +107,16 @@ echo::info("Message with timestamp");
 
 ### Structured Logging
 
-Key-value pairs for machine-readable logs:
-
 ```cpp
 echo::info("User login: ", echo::kv("user", "alice", "age", 30, "role", "admin"));
 // Output: [info] User login: user=alice age=30 role=admin
-
-echo::warn("Connection failed: ", echo::kv("host", "localhost", "port", 8080, "retry", 3));
-// Output: [warning] Connection failed: host=localhost port=8080 retry=3
 ```
 
 ### Custom Types
 
-Log your own types by implementing `pretty()`, `print()`, or `to_string()`:
-
 ```cpp
 struct Point {
     int x, y;
-    
     std::string pretty() const {
         return "Point { x: " + std::to_string(x) + ", y: " + std::to_string(y) + " }";
     }
@@ -165,17 +124,12 @@ struct Point {
 
 Point p{10, 20};
 echo::info("Position: ", p);
-// Output: [info] Position: Point { x: 10, y: 20 }
 ```
 
----
-
-## 🎨 Visual Elements (`banner.hpp`)
-
-Beautiful terminal UI elements with HEX color support!
+## Visual Elements (banner.hpp)
 
 ```cpp
-#include <echo/banner.hpp>  // Includes echo.hpp automatically
+#include <echo/banner.hpp>
 ```
 
 ### Separators
@@ -183,25 +137,18 @@ Beautiful terminal UI elements with HEX color support!
 Auto-sizing separators that adapt to terminal width:
 
 ```cpp
-echo::separator();                    // Full-width line
-echo::separator("Section 1");         // Centered text
-echo::separator("IMPORTANT", '=');    // Custom character
+echo::separator();
+echo::separator("Section 1");
+echo::separator("IMPORTANT", '=');
 
-// With colors!
-echo::separator("Success", '-', "#00FF00");                    // Green
-echo::separator("Warning", '=', {"#FF0000", "#FFFF00"});      // Red→Yellow gradient
-```
-
-**Output:**
-```
-────────────────────────────────────────────────────────────────────────────────
-─────────────────────────────[ Section 1 ]──────────────────────────────────────
-================================[ IMPORTANT ]===================================
+// With colors
+echo::separator("Success", '-', "#00FF00");
+echo::separator("Warning", '=', {"#FF0000", "#FFFF00"});
 ```
 
 ### Boxes
 
-Six beautiful box styles:
+Six box styles:
 
 ```cpp
 echo::box("Hello World");                    // Single line
@@ -211,12 +158,12 @@ echo::box("Alert", echo::BoxStyle::Heavy);   // Heavy/bold lines
 echo::box("Note", echo::BoxStyle::Dashed);   // Dashed lines
 echo::box("Plain", echo::BoxStyle::ASCII);   // ASCII compatible
 
-// With colors!
+// With colors
 echo::box("Success", echo::BoxStyle::Double, "#00FF00");
 echo::box("Fire", echo::BoxStyle::Heavy, {"#FF0000", "#FF7F00", "#FFFF00"});
 ```
 
-**Output:**
+Output:
 ```
 ┌─────────────┐
 │ Hello World │
@@ -225,150 +172,83 @@ echo::box("Fire", echo::BoxStyle::Heavy, {"#FF0000", "#FF7F00", "#FFFF00"});
 ╔═══════╗
 ║ Title ║
 ╚═══════╝
-
-╭──────╮
-│ Info │
-╰──────╯
 ```
 
-### Headers & Titles
+### Headers and Banners
 
 ```cpp
 echo::header("Application Started");
 echo::title("My Application");
-echo::title("Section", '-');
-
-// With colors!
-echo::header("Welcome", "#00FFFF");
-echo::title("Success", '=', {"#00FF00", "#FFFF00"});
-```
-
-### Banners
-
-Large decorative banners for important messages:
-
-```cpp
 echo::banner("WELCOME");
-echo::banner("SUCCESS", echo::BoxStyle::Double);
-echo::banner("ERROR", echo::BoxStyle::Rounded);
 
-// With colors!
+// With colors
+echo::header("Welcome", "#00FFFF");
 echo::banner("READY", echo::BoxStyle::Heavy, "#00FF00");
 ```
 
-**Output:**
-```
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃                                        ┃
-┃              WELCOME                   ┃
-┃                                        ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-```
-
----
-
-## 📊 Progress Bars (`wait.hpp`)
-
-Professional progress indicators with auto-sizing, themes, and advanced features!
+## Progress Bars (wait.hpp)
 
 ```cpp
-#include <echo/wait.hpp>  // Includes echo.hpp automatically
+#include <echo/wait.hpp>
 ```
 
-### Basic Progress Bar
+### Basic Usage
 
 ```cpp
-echo::progress_bar bar(100);  // Total steps
+echo::progress_bar bar(100);
 bar.set_prefix("Loading");
 for (int i = 0; i <= 100; ++i) {
-    bar.tick();  // Increment by 1
+    bar.tick();
 }
 bar.finish();
 ```
 
-**Output:**
-```
-Loading [████████████████████████████████████████████████████████] 100%
-```
+### Bar Styles
 
-### 🎨 Bar Styles
-
-Six beautiful visual styles:
+Six visual styles:
 
 ```cpp
-// Classic ASCII
-bar.set_bar_style(echo::BarStyle::Classic);
-// [===>                                                        ]
-
-// Unicode Blocks
-bar.set_bar_style(echo::BarStyle::Blocks);
-// [███▓▒░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]
-
-// Smooth (sub-pixel precision!)
-bar.set_bar_style(echo::BarStyle::Smooth);
-// [████████▌░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]
-
-// Arrows
-bar.set_bar_style(echo::BarStyle::Arrows);
-// [→→→→⇒                                                       ]
-
-// Dots
-bar.set_bar_style(echo::BarStyle::Dots);
-// [●●●●◉○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○]
-
-// Pure ASCII (compatible)
-bar.set_bar_style(echo::BarStyle::ASCII);
-// [###>........................................................]
+bar.set_bar_style(echo::BarStyle::Classic);  // [===>                    ]
+bar.set_bar_style(echo::BarStyle::Blocks);   // [███▓▒░░░░░░░░░░░░░░░░░░]
+bar.set_bar_style(echo::BarStyle::Smooth);   // [████████▌░░░░░░░░░░░░░░]
+bar.set_bar_style(echo::BarStyle::Arrows);   // [→→→→⇒                   ]
+bar.set_bar_style(echo::BarStyle::Dots);     // [●●●●◉○○○○○○○○○○○○○○○○○○]
+bar.set_bar_style(echo::BarStyle::ASCII);    // [###>...................]
 ```
 
-### 🎨 Pre-configured Themes
+### Pre-configured Themes
 
-11 beautiful themes combining style + colors:
+Eleven themes combining style and colors:
 
 ```cpp
-bar.set_theme(echo::BarTheme::fire());     // Red→Orange→Yellow gradient
+bar.set_theme(echo::BarTheme::fire());     // Red to yellow gradient
 bar.set_theme(echo::BarTheme::ocean());    // Blue gradient
 bar.set_theme(echo::BarTheme::forest());   // Green gradient
-bar.set_theme(echo::BarTheme::sunset());   // Orange→Gold gradient
-bar.set_theme(echo::BarTheme::neon());     // Magenta→Cyan→Yellow
+bar.set_theme(echo::BarTheme::sunset());   // Orange to gold gradient
+bar.set_theme(echo::BarTheme::neon());     // Magenta/cyan/yellow
 ```
 
-### 📏 Auto-Sizing (Full Terminal Width)
+### Auto-Sizing
 
-Progress bars automatically adapt to your terminal size!
+Progress bars automatically adapt to terminal width:
 
 ```cpp
-// No set_bar_width() call = auto-sizing to terminal width
+// No set_bar_width() call = auto-sizing
 echo::progress_bar bar(100);
 bar.set_prefix("Download");
 bar.set_bar_style(echo::BarStyle::Smooth);
 bar.set_gradient({"#00FF00", "#FFFF00", "#FF0000"});
-
-// Intelligently calculates available space after:
-// - Prefix text
-// - Percentage display
-// - Time tracking
-// - Speed display
-// - Postfix text
 ```
 
-**Output on 80-column terminal:**
-```
-Download [████████████████████▌░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 42%
-```
+The bar intelligently calculates available space after accounting for prefix, percentage, time, and speed displays.
 
-**Output on 120-column terminal:**
-```
-Download [████████████████████████████████▌░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 42%
-```
-
-### 📦 Byte Formatting
+### Byte Formatting
 
 Display file sizes with automatic unit conversion:
 
 ```cpp
 const size_t total_bytes = 50 * 1024 * 1024;  // 50 MB
-const size_t chunk_size = 512 * 1024;         // 512 KB chunks
+const size_t chunk_size = 512 * 1024;         // 512 KB
 const size_t total_chunks = total_bytes / chunk_size;
 
 echo::progress_bar download(total_chunks);
@@ -378,19 +258,14 @@ download.set_show_speed(true);
 download.set_show_elapsed(true);
 download.set_bar_style(echo::BarStyle::Smooth);
 download.set_gradient({"#00FF00", "#FFFF00", "#FF0000"});
-
-for (size_t i = 0; i <= total_chunks; ++i) {
-    download.set_progress(i);
-}
-download.finish();
 ```
 
-**Output:**
+Output:
 ```
-Download [████████████████████████████████████] 25.0 MB / 50.0 MB [5s, 5.0 MB/s]
+Download [████████████████████] 25.0 MB / 50.0 MB [5s, 5.0 MB/s]
 ```
 
-### ⏱️ Time & Speed Tracking
+### Time and Speed Tracking
 
 ```cpp
 bar.set_show_elapsed(true);     // Show elapsed time
@@ -398,35 +273,32 @@ bar.set_show_remaining(true);   // Show estimated remaining time
 bar.set_show_speed(true);       // Show transfer speed
 ```
 
-**Output:**
+Output:
 ```
-Processing [████████████████░░░░░░░░░░░░] 60% [1m30s < 1m0s, 1.2 MB/s]
+Processing [████████████░░░░░░░░] 60% [1m30s < 1m0s, 1.2 MB/s]
 ```
 
-### 🎨 Colors & Gradients
+### Colors and Gradients
 
 ```cpp
 // Single color
-bar.set_color("#00FFFF");  // Cyan
+bar.set_color("#00FFFF");
 
 // Gradient (smooth color transition)
-bar.set_gradient({"#00FF00", "#FFFF00", "#FF0000"});  // Green→Yellow→Red
-bar.set_gradient({"#FF00FF", "#00FFFF", "#FFFF00"});  // Rainbow
+bar.set_gradient({"#00FF00", "#FFFF00", "#FF0000"});
 ```
 
-### 🔧 Custom Width
+### Custom Width
 
 Override auto-sizing with a fixed width:
 
 ```cpp
-bar.set_bar_width(40);  // Fixed 40-character bar
+bar.set_bar_width(40);
 ```
 
----
+## Spinners
 
-## 🌀 Spinners
-
-15 animated spinner styles for indeterminate operations:
+Fifteen animated spinner styles:
 
 ```cpp
 echo::spinner spin(echo::spinner_style::aesthetic);
@@ -436,83 +308,51 @@ while (processing) {
     spin.tick();
     std::this_thread::sleep_for(std::chrono::milliseconds(spin.get_interval_ms()));
 }
-spin.stop("✓ Done!");
+spin.stop("Done!");
 ```
 
-**Available styles:**
-- `line` - Classic: `- \ | /`
-- `pipe` - Box drawing: `┤ ┘ ┴ └ ├ ┌ ┬ ┐`
-- `simple_dots` - Simple: `. .. ...`
-- `dots_scrolling` - Animated: `. .. ... .. .`
-- `flip` - Flip: `_ - \` ' ´`
-- `toggle` - Toggle: `= * -`
-- `layer` - Layers: `- = ≡`
-- `point` - Moving dot: `∙∙∙ ●∙∙ ∙●∙ ∙∙●`
-- `dqpb` - Letters: `d q p b`
-- `bouncing_bar` - Bar: `[====]`
-- `bouncing_ball` - Ball: `( ● )`
-- `aesthetic` - Progress-like: `▰▰▰▰▰▰▰`
-- `binary` - Binary: `010010 001100`
-- `grow_vertical` - Vertical: `▁ ▃ ▄ ▅ ▆ ▇`
-- `grow_horizontal` - Horizontal: `▏ ▎ ▍ ▌ ▋ ▊ ▉`
+Available styles: `line`, `pipe`, `simple_dots`, `dots_scrolling`, `flip`, `toggle`, `layer`, `point`, `dqpb`, `bouncing_bar`, `bouncing_ball`, `aesthetic`, `binary`, `grow_vertical`, `grow_horizontal`
 
-**With colors:**
+With colors:
 ```cpp
-spin.set_color("#FF00FF");  // Magenta
-spin.set_gradient({"#FF0000", "#00FF00", "#0000FF"});  // RGB cycle
+spin.set_color("#FF00FF");
+spin.set_gradient({"#FF0000", "#00FF00", "#0000FF"});
 ```
 
----
-
-## 📝 Step Indicators
+## Step Indicators
 
 Track multi-step workflows:
 
 ```cpp
-// Finite steps (known total)
 echo::steps workflow({"Initialize", "Load", "Process", "Save"});
 workflow.next();      // Step 1/4: Initialize
 workflow.complete();  // ✓ Initialize - Complete
-workflow.next();      // Step 2/4: Load
-workflow.complete();  // ✓ Load - Complete
-
-// Infinite steps (unknown total)
-echo::steps infinite;
-infinite.add_step("Connecting");
-infinite.next();      // Step 1: Connecting
-infinite.complete();  // ✓ Connecting - Complete
+workflow.next();
+workflow.complete();
 
 // Handle failures
 workflow.next();
 workflow.fail();  // ✗ Process - Failed
 
 // With colors
-workflow.set_color("#00FF00");  // Green checkmarks
+workflow.set_color("#00FF00");
 ```
 
----
-
-## 🎯 Complete Example
+## Complete Example
 
 ```cpp
 #include <echo/banner.hpp>
 #include <echo/wait.hpp>
 
 int main() {
-    // Beautiful banner
     echo::banner("FILE PROCESSOR", echo::BoxStyle::Double, "#00FFFF");
-    std::cout << "\n";
     
-    // Multi-step workflow
     echo::steps workflow({"Initialize", "Scan Files", "Process", "Complete"});
     
-    // Step 1: Initialize
     workflow.next();
     echo::info("Loading configuration...");
-    std::this_thread::sleep_for(std::chrono::seconds(1));
     workflow.complete();
     
-    // Step 2: Scan Files
     workflow.next();
     echo::spinner scan(echo::spinner_style::aesthetic);
     scan.set_message("Scanning directory...");
@@ -524,7 +364,6 @@ int main() {
     scan.stop("Found 1,234 files");
     workflow.complete();
     
-    // Step 3: Process Files
     workflow.next();
     echo::progress_bar process(1234);
     process.set_prefix("Processing");
@@ -540,11 +379,9 @@ int main() {
     process.finish();
     workflow.complete();
     
-    // Step 4: Complete
     workflow.next();
     workflow.complete();
     
-    std::cout << "\n";
     echo::separator("SUCCESS", '=', "#00FF00");
     echo::info("All files processed successfully!");
     
@@ -552,9 +389,7 @@ int main() {
 }
 ```
 
----
-
-## 🔧 Configuration
+## Configuration
 
 ### Compile-Time Options
 
@@ -564,8 +399,6 @@ int main() {
 | `ECHO_ENABLE_TIMESTAMP` | Enable timestamps in HH:MM:SS format | Disabled |
 
 ### Build System Support
-
-Echo works with CMake, xmake, and Zig:
 
 ```bash
 # Auto-detect build system
@@ -577,9 +410,7 @@ BUILD_SYSTEM=xmake make build
 BUILD_SYSTEM=zig make build
 ```
 
----
-
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run all tests
@@ -595,19 +426,15 @@ make build
 ./build/linux/x86_64/release/fullwidth_demo
 ```
 
----
+## Requirements
 
-## 📋 Requirements
+- C++20 or later
+- Standard library only (no external dependencies)
+- Unix/Linux/macOS for terminal width detection
 
-- **C++20** or later
-- **Standard library only** - no external dependencies
-- **Unix/Linux/macOS** for terminal width detection (Windows support coming soon)
+## Color Support
 
----
-
-## 🎨 Color Support
-
-Echo supports **24-bit true color** (16.7 million colors) using HEX codes:
+Echo supports 24-bit true color using HEX codes:
 
 ```cpp
 // Single colors
@@ -616,53 +443,24 @@ echo::box("Message", echo::BoxStyle::Double, "#00FF00");
 
 // Gradients (smooth transitions)
 echo::separator("Rainbow", '=', {"#FF0000", "#FF7F00", "#FFFF00", "#00FF00", "#0000FF", "#8B00FF"});
-echo::box("Fire", echo::BoxStyle::Heavy, {"#FF0000", "#FF7F00", "#FFFF00"});
 
 // Progress bars
 bar.set_color("#00FFFF");
-bar.set_gradient({"#00FF00", "#FFFF00", "#FF0000"});  // Green→Yellow→Red
+bar.set_gradient({"#00FF00", "#FFFF00", "#FF0000"});
 
 // Spinners
 spin.set_color("#FF00FF");
-spin.set_gradient({"#FF0000", "#00FF00", "#0000FF"});  // RGB cycle
+spin.set_gradient({"#FF0000", "#00FF00", "#0000FF"});
 ```
 
----
+## Contributing
 
-## 🤝 Contributing
+Contributions are welcome. Please submit issues or pull requests.
 
-Contributions are welcome! Please feel free to submit issues or pull requests.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-## 📄 License
+## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
----
-
-## 🙏 Acknowledgments
+## Acknowledgments
 
 See [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) for credits and acknowledgments.
-
----
-
-## 🌟 Star History
-
-If you find Echo useful, please consider giving it a star! ⭐
-
----
-
-<div align="center">
-
-**Made with ❤️ by the Echo team**
-
-[Documentation](https://github.com/robolibs/echo) • [Examples](examples/) • [Issues](https://github.com/robolibs/echo/issues)
-
-</div>
