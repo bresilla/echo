@@ -12,6 +12,7 @@
 - 🧵 **Thread-safe** - Safe concurrent logging
 - 📊 **Structured logging** - Key-value pairs support
 - 🎯 **Custom types** - Log your own types easily
+- 📏 **Smart separators** - Terminal-aware visual separators
 
 ## Quick Start
 
@@ -178,6 +179,29 @@ for (int i = 0; i < 10; ++i) {
 }
 for (auto& t : threads) t.join();
 ```
+
+### Separators
+
+Create visual separators that automatically adapt to your terminal width:
+
+```cpp
+// Full-width separator line
+echo::separator();
+// Output: --------------------------------------------------------------------------------
+
+// Centered text with separators
+echo::separator("Section 1");
+// Output: ---------------------------------[ Section 1 ]----------------------------------
+
+// Custom separator character
+echo::separator("IMPORTANT", '=');
+// Output: =================================[ IMPORTANT ]==================================
+
+echo::separator("Configuration", '*');
+// Output: *******************************[ Configuration ]********************************
+```
+
+The separator automatically detects your terminal width and adjusts accordingly. Perfect for visually organizing log output into sections!
 
 ## Building and Testing
 
