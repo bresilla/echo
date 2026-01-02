@@ -39,6 +39,7 @@
 #include <echo/echo.hpp>
 
 #include <chrono>
+#include <cstdio>
 #include <iostream>
 #include <mutex>
 #include <string>
@@ -240,6 +241,60 @@ namespace echo {
     };
 
     // =================================================================================================
+    // Progress bar styles and themes
+    // =================================================================================================
+
+    enum class BarStyle {
+        Classic, // [===>    ] - ASCII compatible
+        Blocks,  // [███▓▒░  ] - Unicode blocks
+        Smooth,  // [████▌   ] - Smooth sub-blocks ▏▎▍▌▋▊▉█
+        Arrows,  // [→→→→    ] - Arrow characters
+        Dots,    // [●●●●○○○○] - Filled/empty dots
+        ASCII    // [###>... ] - Pure ASCII (no special chars)
+    };
+
+    struct BarTheme {
+        BarStyle style;
+        std::string fill;
+        std::string lead;
+        std::string remainder;
+        std::string bar_start;
+        std::string bar_end;
+        std::vector<std::string> gradient_colors;
+
+        // Pre-configured themes
+        static BarTheme classic() { return {BarStyle::Classic, "=", ">", " ", "[", "]", {}}; }
+
+        static BarTheme blocks() { return {BarStyle::Blocks, "█", "▓", "░", "[", "]", {}}; }
+
+        static BarTheme smooth() { return {BarStyle::Smooth, "█", "", "░", "[", "]", {}}; }
+
+        static BarTheme arrows() { return {BarStyle::Arrows, "→", "⇒", " ", "[", "]", {}}; }
+
+        static BarTheme dots() { return {BarStyle::Dots, "●", "◉", "○", "[", "]", {}}; }
+
+        static BarTheme ascii() { return {BarStyle::ASCII, "#", ">", ".", "[", "]", {}}; }
+
+        static BarTheme fire() {
+            return {BarStyle::Blocks, "█", "▓", "░", "[", "]", {"#FF0000", "#FF7F00", "#FFFF00"}};
+        }
+
+        static BarTheme ocean() {
+            return {BarStyle::Smooth, "█", "", "░", "[", "]", {"#000080", "#0000FF", "#00FFFF"}};
+        }
+
+        static BarTheme forest() {
+            return {BarStyle::Blocks, "█", "▓", "░", "[", "]", {"#006400", "#228B22", "#90EE90"}};
+        }
+
+        static BarTheme sunset() {
+            return {BarStyle::Smooth, "█", "", "░", "[", "]", {"#FF4500", "#FF6347", "#FFD700"}};
+        }
+
+        static BarTheme neon() { return {BarStyle::Dots, "●", "◉", "○", "[", "]", {"#FF00FF", "#00FFFF", "#FFFF00"}}; }
+    };
+
+    // =================================================================================================
     // Progress bar class
     // =================================================================================================
 
@@ -248,18 +303,24 @@ namespace echo {
         size_t current_ = 0;
         size_t total_ = 100;
         int bar_width_ = 50;
-        char fill_char_ = '=';
-        char lead_char_ = '>';
-        char remainder_char_ = ' ';
+        std::string fill_str_ = "=";
+        std::string lead_str_ = ">";
+        std::string remainder_str_ = " ";
+        std::string bar_start_ = "[";
+        std::string bar_end_ = "]";
         std::string prefix_;
         std::string postfix_;
         bool show_percentage_ = true;
         bool show_elapsed_ = false;
         bool show_remaining_ = false;
+        bool show_bytes_ = false;
+        bool show_speed_ = false;
         std::chrono::steady_clock::time_point start_time_;
         bool started_ = false;
         std::vector<std::string> gradient_colors_;
         bool use_gradient_ = false;
+        BarStyle bar_style_ = BarStyle::Classic;
+        size_t bytes_per_unit_ = 1; // For byte formatting
 
         std::string format_time(int seconds) const {
             int mins = seconds / 60;
@@ -270,16 +331,114 @@ namespace echo {
             return std::to_string(secs) + "s";
         }
 
+        std::string format_bytes(size_t bytes) const {
+            const char *units[] = {"B", "KB", "MB", "GB", "TB"};
+            int unit_index = 0;
+            double size = static_cast<double>(bytes);
+
+            while (size >= 1024.0 && unit_index < 4) {
+                size /= 1024.0;
+                unit_index++;
+            }
+
+            char buffer[32];
+            if (size >= 100.0) {
+                snprintf(buffer, sizeof(buffer), "%.0f %s", size, units[unit_index]);
+            } else if (size >= 10.0) {
+                snprintf(buffer, sizeof(buffer), "%.1f %s", size, units[unit_index]);
+            } else {
+                snprintf(buffer, sizeof(buffer), "%.2f %s", size, units[unit_index]);
+            }
+            return std::string(buffer);
+        }
+
+        std::string format_speed(double bytes_per_sec) const {
+            const char *units[] = {"B/s", "KB/s", "MB/s", "GB/s", "TB/s"};
+            int unit_index = 0;
+            double speed = bytes_per_sec;
+
+            while (speed >= 1024.0 && unit_index < 4) {
+                speed /= 1024.0;
+                unit_index++;
+            }
+
+            char buffer[32];
+            if (speed >= 100.0) {
+                snprintf(buffer, sizeof(buffer), "%.0f %s", speed, units[unit_index]);
+            } else if (speed >= 10.0) {
+                snprintf(buffer, sizeof(buffer), "%.1f %s", speed, units[unit_index]);
+            } else {
+                snprintf(buffer, sizeof(buffer), "%.2f %s", speed, units[unit_index]);
+            }
+            return std::string(buffer);
+        }
+
       public:
         progress_bar(size_t total = 100) : total_(total) { start_time_ = std::chrono::steady_clock::now(); }
 
         void set_bar_width(int width) { bar_width_ = width; }
 
-        void set_fill_char(char c) { fill_char_ = c; }
+        void set_fill_char(char c) { fill_str_ = std::string(1, c); }
 
-        void set_lead_char(char c) { lead_char_ = c; }
+        void set_lead_char(char c) { lead_str_ = std::string(1, c); }
 
-        void set_remainder_char(char c) { remainder_char_ = c; }
+        void set_remainder_char(char c) { remainder_str_ = std::string(1, c); }
+
+        void set_bar_style(BarStyle style) {
+            bar_style_ = style;
+            // Apply default characters for the style
+            switch (style) {
+            case BarStyle::Classic:
+                fill_str_ = "=";
+                lead_str_ = ">";
+                remainder_str_ = " ";
+                break;
+            case BarStyle::Blocks:
+                fill_str_ = "█";
+                lead_str_ = "▓";
+                remainder_str_ = "░";
+                break;
+            case BarStyle::Smooth:
+                fill_str_ = "█";
+                lead_str_ = "";
+                remainder_str_ = "░";
+                break;
+            case BarStyle::Arrows:
+                fill_str_ = "→";
+                lead_str_ = "⇒";
+                remainder_str_ = " ";
+                break;
+            case BarStyle::Dots:
+                fill_str_ = "●";
+                lead_str_ = "◉";
+                remainder_str_ = "○";
+                break;
+            case BarStyle::ASCII:
+                fill_str_ = "#";
+                lead_str_ = ">";
+                remainder_str_ = ".";
+                break;
+            }
+        }
+
+        void set_theme(const BarTheme &theme) {
+            bar_style_ = theme.style;
+            fill_str_ = theme.fill;
+            lead_str_ = theme.lead;
+            remainder_str_ = theme.remainder;
+            bar_start_ = theme.bar_start;
+            bar_end_ = theme.bar_end;
+            if (!theme.gradient_colors.empty()) {
+                set_gradient(theme.gradient_colors);
+            }
+        }
+
+        void set_show_bytes(bool show, size_t bytes_per_unit = 1) {
+            show_bytes_ = show;
+            bytes_per_unit_ = bytes_per_unit;
+        }
+
+        void set_show_speed(bool show) { show_speed_ = show; }
 
         void set_prefix(const std::string &prefix) { prefix_ = prefix; }
 
@@ -334,50 +493,97 @@ namespace echo {
             int filled = static_cast<int>(progress * bar_width_);
 
             // Bar
-            std::cout << "[";
-            for (int i = 0; i < bar_width_; ++i) {
-                // Get color for this position
-                std::string color_code;
-                if (!gradient_colors_.empty()) {
-                    if (use_gradient_) {
-                        // Gradient follows progress
-                        float pos = static_cast<float>(i) / static_cast<float>(bar_width_ - 1);
-                        color_code = detail::get_gradient_color(gradient_colors_, pos);
+            std::cout << bar_start_;
+
+            // For smooth style, use sub-block characters for fractional progress
+            if (bar_style_ == BarStyle::Smooth && filled < bar_width_) {
+                const std::string smooth_chars[] = {"", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"};
+                float exact_filled = progress * bar_width_;
+                int whole_filled = static_cast<int>(exact_filled);
+                float fraction = exact_filled - whole_filled;
+                int smooth_index = static_cast<int>(fraction * 8);
+
+                for (int i = 0; i < bar_width_; ++i) {
+                    std::string color_code;
+                    if (!gradient_colors_.empty()) {
+                        if (use_gradient_) {
+                            float pos = static_cast<float>(i) / static_cast<float>(bar_width_ - 1);
+                            color_code = detail::get_gradient_color(gradient_colors_, pos);
+                        } else {
+                            color_code = detail::get_single_color(gradient_colors_[0]);
+                        }
+                    }
+
+                    if (i < whole_filled) {
+                        std::cout << color_code << fill_str_ << detail::reset_color();
+                    } else if (i == whole_filled && smooth_index > 0) {
+                        std::cout << color_code << smooth_chars[smooth_index] << detail::reset_color();
                     } else {
-                        // Single color
-                        color_code = detail::get_single_color(gradient_colors_[0]);
+                        std::cout << remainder_str_;
                     }
                 }
+            } else {
+                // Standard rendering for other styles
+                for (int i = 0; i < bar_width_; ++i) {
+                    std::string color_code;
+                    if (!gradient_colors_.empty()) {
+                        if (use_gradient_) {
+                            float pos = static_cast<float>(i) / static_cast<float>(bar_width_ - 1);
+                            color_code = detail::get_gradient_color(gradient_colors_, pos);
+                        } else {
+                            color_code = detail::get_single_color(gradient_colors_[0]);
+                        }
+                    }
 
-                if (i < filled - 1) {
-                    std::cout << color_code << fill_char_ << detail::reset_color();
-                } else if (i == filled - 1 && filled < bar_width_) {
-                    std::cout << color_code << lead_char_ << detail::reset_color();
-                } else {
-                    std::cout << remainder_char_;
+                    if (i < filled - 1) {
+                        std::cout << color_code << fill_str_ << detail::reset_color();
+                    } else if (i == filled - 1 && filled < bar_width_ && !lead_str_.empty()) {
+                        std::cout << color_code << lead_str_ << detail::reset_color();
+                    } else if (i >= filled) {
+                        std::cout << remainder_str_;
+                    } else {
+                        std::cout << color_code << fill_str_ << detail::reset_color();
+                    }
                 }
             }
-            std::cout << "]";
+            std::cout << bar_end_;
 
-            // Percentage
-            if (show_percentage_) {
+            // Byte count or percentage
+            if (show_bytes_) {
+                size_t current_bytes = current_ * bytes_per_unit_;
+                size_t total_bytes = total_ * bytes_per_unit_;
+                std::cout << " " << format_bytes(current_bytes) << " / " << format_bytes(total_bytes);
+            } else if (show_percentage_) {
                 std::cout << " " << static_cast<int>(progress * 100) << "%";
             }
 
-            // Time tracking
-            if (show_elapsed_ || show_remaining_) {
-                auto now = std::chrono::steady_clock::now();
-                auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - start_time_).count();
+            // Time tracking and speed
+            auto now = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - start_time_).count();
 
+            if (show_elapsed_ || show_remaining_ || show_speed_) {
                 std::cout << " [";
+
                 if (show_elapsed_) {
                     std::cout << format_time(elapsed);
                 }
 
                 if (show_remaining_ && current_ > 0 && current_ < total_) {
                     int remaining = static_cast<int>((elapsed * (total_ - current_)) / current_);
-                    std::cout << "<" << format_time(remaining);
+                    if (show_elapsed_) {
+                        std::cout << " < ";
+                    }
+                    std::cout << format_time(remaining);
                 }
+
+                if (show_speed_ && elapsed > 0) {
+                    double bytes_per_sec = (current_ * bytes_per_unit_) / static_cast<double>(elapsed);
+                    if (show_elapsed_ || show_remaining_) {
+                        std::cout << ", ";
+                    }
+                    std::cout << format_speed(bytes_per_sec);
+                }
+
                 std::cout << "]";
             }
 
