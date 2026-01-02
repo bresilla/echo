@@ -178,3 +178,291 @@ TEST_CASE("separator() with different characters produces different output") {
     CHECK(output1.find("[ TEXT ]") != std::string::npos);
     CHECK(output2.find("[ TEXT ]") != std::string::npos);
 }
+
+// =================================================================================================
+// Box tests
+// =================================================================================================
+
+TEST_CASE("box() creates basic box with text") {
+    OutputCapture capture;
+    echo::box("Hello");
+    std::string output = capture.get();
+
+    // Should contain the text
+    CHECK(output.find("Hello") != std::string::npos);
+
+    // Should have multiple lines (top, middle, bottom)
+    size_t newline_count = 0;
+    for (char c : output) {
+        if (c == '\n')
+            newline_count++;
+    }
+    CHECK(newline_count == 3); // Top border, text line, bottom border
+}
+
+TEST_CASE("box() with Single style") {
+    OutputCapture capture;
+    echo::box("Test", echo::BoxStyle::Single);
+    std::string output = capture.get();
+
+    // Should contain single-line box characters
+    CHECK(output.find("┌") != std::string::npos); // Top-left
+    CHECK(output.find("┐") != std::string::npos); // Top-right
+    CHECK(output.find("└") != std::string::npos); // Bottom-left
+    CHECK(output.find("┘") != std::string::npos); // Bottom-right
+    CHECK(output.find("─") != std::string::npos); // Horizontal
+    CHECK(output.find("│") != std::string::npos); // Vertical
+    CHECK(output.find("Test") != std::string::npos);
+}
+
+TEST_CASE("box() with Double style") {
+    OutputCapture capture;
+    echo::box("Test", echo::BoxStyle::Double);
+    std::string output = capture.get();
+
+    // Should contain double-line box characters
+    CHECK(output.find("╔") != std::string::npos); // Top-left
+    CHECK(output.find("╗") != std::string::npos); // Top-right
+    CHECK(output.find("╚") != std::string::npos); // Bottom-left
+    CHECK(output.find("╝") != std::string::npos); // Bottom-right
+    CHECK(output.find("═") != std::string::npos); // Horizontal
+    CHECK(output.find("║") != std::string::npos); // Vertical
+    CHECK(output.find("Test") != std::string::npos);
+}
+
+TEST_CASE("box() with Rounded style") {
+    OutputCapture capture;
+    echo::box("Test", echo::BoxStyle::Rounded);
+    std::string output = capture.get();
+
+    // Should contain rounded box characters
+    CHECK(output.find("╭") != std::string::npos); // Top-left
+    CHECK(output.find("╮") != std::string::npos); // Top-right
+    CHECK(output.find("╰") != std::string::npos); // Bottom-left
+    CHECK(output.find("╯") != std::string::npos); // Bottom-right
+    CHECK(output.find("─") != std::string::npos); // Horizontal
+    CHECK(output.find("│") != std::string::npos); // Vertical
+    CHECK(output.find("Test") != std::string::npos);
+}
+
+TEST_CASE("box() with Heavy style") {
+    OutputCapture capture;
+    echo::box("Test", echo::BoxStyle::Heavy);
+    std::string output = capture.get();
+
+    // Should contain heavy box characters
+    CHECK(output.find("┏") != std::string::npos); // Top-left
+    CHECK(output.find("┓") != std::string::npos); // Top-right
+    CHECK(output.find("┗") != std::string::npos); // Bottom-left
+    CHECK(output.find("┛") != std::string::npos); // Bottom-right
+    CHECK(output.find("━") != std::string::npos); // Horizontal
+    CHECK(output.find("┃") != std::string::npos); // Vertical
+    CHECK(output.find("Test") != std::string::npos);
+}
+
+TEST_CASE("box() with Dashed style") {
+    OutputCapture capture;
+    echo::box("Test", echo::BoxStyle::Dashed);
+    std::string output = capture.get();
+
+    // Should contain dashed box characters
+    CHECK(output.find("┏") != std::string::npos); // Top-left
+    CHECK(output.find("┓") != std::string::npos); // Top-right
+    CHECK(output.find("┗") != std::string::npos); // Bottom-left
+    CHECK(output.find("┛") != std::string::npos); // Bottom-right
+    CHECK(output.find("╍") != std::string::npos); // Horizontal
+    CHECK(output.find("╏") != std::string::npos); // Vertical
+    CHECK(output.find("Test") != std::string::npos);
+}
+
+TEST_CASE("box() with ASCII style") {
+    OutputCapture capture;
+    echo::box("Test", echo::BoxStyle::ASCII);
+    std::string output = capture.get();
+
+    // Should contain ASCII box characters
+    CHECK(output.find("+") != std::string::npos); // Corners
+    CHECK(output.find("-") != std::string::npos); // Horizontal
+    CHECK(output.find("|") != std::string::npos); // Vertical
+    CHECK(output.find("Test") != std::string::npos);
+}
+
+TEST_CASE("box() with various text lengths") {
+    SUBCASE("Short text") {
+        OutputCapture capture;
+        echo::box("Hi");
+        std::string output = capture.get();
+        CHECK(output.find("Hi") != std::string::npos);
+    }
+
+    SUBCASE("Medium text") {
+        OutputCapture capture;
+        echo::box("This is a medium length text");
+        std::string output = capture.get();
+        CHECK(output.find("This is a medium length text") != std::string::npos);
+    }
+
+    SUBCASE("Long text") {
+        OutputCapture capture;
+        std::string long_text(50, 'x');
+        echo::box(long_text);
+        std::string output = capture.get();
+        CHECK(output.find(long_text) != std::string::npos);
+    }
+}
+
+// =================================================================================================
+// Header tests
+// =================================================================================================
+
+TEST_CASE("header() creates fancy header") {
+    OutputCapture capture;
+    echo::header("Test Header");
+    std::string output = capture.get();
+
+    // Should contain the text
+    CHECK(output.find("Test Header") != std::string::npos);
+
+    // Should contain double-line box characters
+    CHECK(output.find("╔") != std::string::npos);
+    CHECK(output.find("╗") != std::string::npos);
+    CHECK(output.find("╚") != std::string::npos);
+    CHECK(output.find("╝") != std::string::npos);
+    CHECK(output.find("═") != std::string::npos);
+    CHECK(output.find("║") != std::string::npos);
+
+    // Should have 3 lines
+    size_t newline_count = 0;
+    for (char c : output) {
+        if (c == '\n')
+            newline_count++;
+    }
+    CHECK(newline_count == 3);
+}
+
+TEST_CASE("header() with various text lengths") {
+    SUBCASE("Short text") {
+        OutputCapture capture;
+        echo::header("Hi");
+        std::string output = capture.get();
+        CHECK(output.find("Hi") != std::string::npos);
+    }
+
+    SUBCASE("Long text") {
+        OutputCapture capture;
+        echo::header("This is a very long header text");
+        std::string output = capture.get();
+        CHECK(output.find("This is a very long header text") != std::string::npos);
+    }
+}
+
+// =================================================================================================
+// Title tests
+// =================================================================================================
+
+TEST_CASE("title() creates centered title") {
+    OutputCapture capture;
+    echo::title("Test Title");
+    std::string output = capture.get();
+
+    // Should contain the text
+    CHECK(output.find("Test Title") != std::string::npos);
+
+    // Should have 3 lines (top border, text, bottom border)
+    size_t newline_count = 0;
+    for (char c : output) {
+        if (c == '\n')
+            newline_count++;
+    }
+    CHECK(newline_count == 3);
+
+    // Default border should be '='
+    CHECK(output.find("=") != std::string::npos);
+}
+
+TEST_CASE("title() with custom border character") {
+    SUBCASE("Dash border") {
+        OutputCapture capture;
+        echo::title("Title", '-');
+        std::string output = capture.get();
+
+        CHECK(output.find("Title") != std::string::npos);
+        CHECK(output.find("-") != std::string::npos);
+    }
+
+    SUBCASE("Asterisk border") {
+        OutputCapture capture;
+        echo::title("Title", '*');
+        std::string output = capture.get();
+
+        CHECK(output.find("Title") != std::string::npos);
+        CHECK(output.find("*") != std::string::npos);
+    }
+}
+
+// =================================================================================================
+// Banner tests
+// =================================================================================================
+
+TEST_CASE("banner() creates large decorative banner") {
+    OutputCapture capture;
+    echo::banner("WELCOME");
+    std::string output = capture.get();
+
+    // Should contain the text
+    CHECK(output.find("WELCOME") != std::string::npos);
+
+    // Should have 5 lines (top, empty, text, empty, bottom)
+    size_t newline_count = 0;
+    for (char c : output) {
+        if (c == '\n')
+            newline_count++;
+    }
+    CHECK(newline_count == 5);
+
+    // Default style is Heavy
+    CHECK(output.find("┏") != std::string::npos);
+    CHECK(output.find("┓") != std::string::npos);
+    CHECK(output.find("┗") != std::string::npos);
+    CHECK(output.find("┛") != std::string::npos);
+    CHECK(output.find("━") != std::string::npos);
+    CHECK(output.find("┃") != std::string::npos);
+}
+
+TEST_CASE("banner() with different styles") {
+    SUBCASE("Single style") {
+        OutputCapture capture;
+        echo::banner("TEST", echo::BoxStyle::Single);
+        std::string output = capture.get();
+
+        CHECK(output.find("TEST") != std::string::npos);
+        CHECK(output.find("┌") != std::string::npos);
+    }
+
+    SUBCASE("Double style") {
+        OutputCapture capture;
+        echo::banner("TEST", echo::BoxStyle::Double);
+        std::string output = capture.get();
+
+        CHECK(output.find("TEST") != std::string::npos);
+        CHECK(output.find("╔") != std::string::npos);
+    }
+
+    SUBCASE("Rounded style") {
+        OutputCapture capture;
+        echo::banner("TEST", echo::BoxStyle::Rounded);
+        std::string output = capture.get();
+
+        CHECK(output.find("TEST") != std::string::npos);
+        CHECK(output.find("╭") != std::string::npos);
+    }
+
+    SUBCASE("ASCII style") {
+        OutputCapture capture;
+        echo::banner("TEST", echo::BoxStyle::ASCII);
+        std::string output = capture.get();
+
+        CHECK(output.find("TEST") != std::string::npos);
+        CHECK(output.find("+") != std::string::npos);
+    }
+}
