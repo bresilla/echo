@@ -9,7 +9,7 @@
  *   echo::info("Hello, world!");
  *   echo::debug("Value: ", 42);
  *
- * Log level control (two ways):
+ * Log level control:
  *
  *   1. Compile-time via build system:
  *      -DLOGLEVEL=Trace|Debug|Info|Warn|Error|Critical
@@ -18,6 +18,23 @@
  *      #define LOGLEVEL Trace
  *      #include <echo/echo.hpp>
  *
+ *   3. Runtime control:
+ *      echo::set_level(echo::Level::Debug);
+ *      auto level = echo::get_level();
+ *
+ * Timestamp support:
+ *   - Enable timestamps with: #define ECHO_ENABLE_TIMESTAMP
+ *   - Format: [HH:MM:SS][level] Message
+ *   - Default: disabled (no timestamp)
+ *
+ * Thread safety:
+ *   - Thread-safe by default (uses mutex)
+ *   - Multiple threads can log concurrently without message corruption
+ *
+ * Structured logging:
+ *   - Use kv() for key-value pairs: echo::info("Login: ", kv("user", "john", "age", 25))
+ *   - Output format: key=value key2=value2
+ *
  * Supports logging of:
  *   - Anything convertible to string (via operator<<)
  *   - Objects with pretty_print() method (preferred)
@@ -25,9 +42,15 @@
  */
 
 #include <iostream>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <type_traits>
+
+#ifdef ECHO_ENABLE_TIMESTAMP
+#include <chrono>
+#include <iomanip>
+#endif
 
 namespace echo {
 
@@ -48,6 +71,19 @@ namespace echo {
 #endif
 
     namespace detail {
+
+        // =================================================================================================
+        // Thread safety
+        // =================================================================================================
+
+        inline std::mutex &get_log_mutex() {
+            static std::mutex log_mutex;
+            return log_mutex;
+        }
+
+        // =================================================================================================
+        // Log level parsing
+        // =================================================================================================
 
         inline constexpr Level parse_level() {
 #if defined(LOGLEVEL)
@@ -71,6 +107,20 @@ namespace echo {
         }
 
         inline constexpr Level ACTIVE_LEVEL = parse_level();
+
+        // =================================================================================================
+        // Runtime log level control
+        // =================================================================================================
+
+        inline Level &get_runtime_level() {
+            static Level runtime_level = Level::Off; // Off means "use compile-time level"
+            return runtime_level;
+        }
+
+        inline Level get_effective_level() {
+            Level runtime = get_runtime_level();
+            return (runtime == Level::Off) ? ACTIVE_LEVEL : runtime;
+        }
 
         // =================================================================================================
         // Type traits for detecting print methods
@@ -165,6 +215,23 @@ namespace echo {
         constexpr const char *RESET = "\033[0m";
 
         // =================================================================================================
+        // Timestamp support
+        // =================================================================================================
+
+#ifdef ECHO_ENABLE_TIMESTAMP
+        inline std::string get_timestamp() {
+            auto now = std::chrono::system_clock::now();
+            auto time = std::chrono::system_clock::to_time_t(now);
+            auto tm = *std::localtime(&time);
+
+            std::ostringstream oss;
+            oss << std::setfill('0') << std::setw(2) << tm.tm_hour << ":" << std::setw(2) << tm.tm_min << ":"
+                << std::setw(2) << tm.tm_sec;
+            return oss.str();
+        }
+#endif
+
+        // =================================================================================================
         // Core logging implementation
         // =================================================================================================
 
@@ -178,10 +245,19 @@ namespace echo {
 
         template <Level L, typename... Args> inline void log(const Args &...args) {
             if constexpr (static_cast<int>(L) >= static_cast<int>(ACTIVE_LEVEL)) {
+                // Runtime level check
+                if (static_cast<int>(L) < static_cast<int>(get_effective_level())) {
+                    return;
+                }
+
                 std::ostringstream oss;
                 append_args(oss, args...);
 
+                std::lock_guard<std::mutex> lock(get_log_mutex());
                 std::ostream &out = (L >= Level::Error) ? std::cerr : std::cout;
+#ifdef ECHO_ENABLE_TIMESTAMP
+                out << "[" << get_timestamp() << "]";
+#endif
                 out << level_color(L) << "[" << level_name(L) << "]" << RESET << " " << oss.str() << "\n";
             }
         }
@@ -212,6 +288,40 @@ namespace echo {
 
     template <Level L> inline constexpr bool is_enabled() {
         return static_cast<int>(L) >= static_cast<int>(detail::ACTIVE_LEVEL);
+    }
+
+    // =================================================================================================
+    // Runtime log level control
+    // =================================================================================================
+
+    inline void set_level(Level level) { detail::get_runtime_level() = level; }
+
+    inline Level get_level() { return detail::get_effective_level(); }
+
+    // =================================================================================================
+    // Structured logging (key-value pairs)
+    // =================================================================================================
+
+    namespace detail {
+        // Base case: no more arguments
+        inline void append_kv(std::ostringstream &) {}
+
+        // Recursive case: key-value pairs
+        template <typename K, typename V, typename... Rest>
+        inline void append_kv(std::ostringstream &oss, const K &key, const V &value, const Rest &...rest) {
+            oss << stringify(key) << "=" << stringify(value);
+            if constexpr (sizeof...(rest) > 0) {
+                oss << " ";
+                append_kv(oss, rest...);
+            }
+        }
+    } // namespace detail
+
+    template <typename... Args> inline std::string kv(const Args &...args) {
+        static_assert(sizeof...(args) % 2 == 0, "kv() requires an even number of arguments (key-value pairs)");
+        std::ostringstream oss;
+        detail::append_kv(oss, args...);
+        return oss.str();
     }
 
 } // namespace echo
