@@ -10,18 +10,33 @@
  * Usage:
  *   #include <echo/banner.hpp>
  *
+ *   // Separators
  *   echo::separator();                    // Full-width line
  *   echo::separator("Section 1");         // Centered text
  *   echo::separator("IMPORTANT", '=');    // Custom character
  *
+ *   // Boxes
  *   echo::box("Hello World");             // Box with single lines
  *   echo::box("Title", BoxStyle::Double); // Box with double lines
  *   echo::box("Info", BoxStyle::Rounded); // Box with rounded corners
+ *   echo::box("Alert", BoxStyle::Heavy);  // Box with heavy lines
+ *   echo::box("Note", BoxStyle::Dashed);  // Box with dashed lines
+ *   echo::box("Plain", BoxStyle::ASCII);  // Box with ASCII characters
+ *
+ *   // Headers and Titles
+ *   echo::header("Application Started");  // Fancy header with double lines
+ *   echo::title("My Application");        // Centered title with borders
+ *   echo::title("Section", '-');          // Custom border character
+ *
+ *   // Banners
+ *   echo::banner("WELCOME");              // Large decorative banner
+ *   echo::banner("ERROR", BoxStyle::Double); // Banner with custom style
  *
  * Features:
  *   - Terminal-aware separators (auto-detects width)
  *   - Centered text with customizable separator characters
- *   - Unicode box drawing with multiple styles
+ *   - Unicode box drawing with multiple styles (Single, Double, Rounded, Heavy, Dashed, ASCII)
+ *   - Fancy headers and banners for visual organization
  */
 
 #include <echo/echo.hpp>
@@ -45,6 +60,9 @@ namespace echo {
         Single,  // ┌─┐ │ └─┘
         Double,  // ╔═╗ ║ ╚═╝
         Rounded, // ╭─╮ │ ╰─╯
+        Heavy,   // ┏━┓ ┃ ┗━┛
+        Dashed,  // ┏╍╍┓ ╏ ╏ ┗╍╍┛
+        ASCII,   // +--+ | | +--+
     };
 
     namespace detail {
@@ -161,6 +179,30 @@ namespace echo {
             horizontal = "─";
             vertical = "│";
             break;
+        case BoxStyle::Heavy:
+            top_left = "┏";
+            top_right = "┓";
+            bottom_left = "┗";
+            bottom_right = "┛";
+            horizontal = "━";
+            vertical = "┃";
+            break;
+        case BoxStyle::Dashed:
+            top_left = "┏";
+            top_right = "┓";
+            bottom_left = "┗";
+            bottom_right = "┛";
+            horizontal = "╍";
+            vertical = "╏";
+            break;
+        case BoxStyle::ASCII:
+            top_left = "+";
+            top_right = "+";
+            bottom_left = "+";
+            bottom_right = "+";
+            horizontal = "-";
+            vertical = "|";
+            break;
         }
 
         // Calculate box width (text + 2 spaces padding + 2 borders)
@@ -180,6 +222,205 @@ namespace echo {
         // Bottom border
         std::cout << bottom_left;
         for (int i = 0; i < box_width; ++i) {
+            std::cout << horizontal;
+        }
+        std::cout << bottom_right << "\n";
+    }
+
+    // =================================================================================================
+    // Header function
+    // =================================================================================================
+
+    /**
+     * @brief Print a fancy header with double lines
+     * @param text Header text to display
+     *
+     * Example:
+     *   header("Application Started");
+     *   // ╔════════════════════════════════════════╗
+     *   // ║       Application Started              ║
+     *   // ╚════════════════════════════════════════╝
+     */
+    inline void header(const std::string &text) {
+        int width = detail::get_terminal_width();
+        int text_len = text.length();
+        int padding = 2;               // 1 space on each side
+        int content_width = width - 4; // Subtract 2 for borders and 2 for padding
+
+        if (text_len > content_width) {
+            content_width = text_len + padding;
+        }
+
+        int total_padding = content_width - text_len;
+        int left_pad = total_padding / 2;
+        int right_pad = total_padding - left_pad;
+
+        // Top border
+        std::cout << "╔";
+        for (int i = 0; i < content_width + padding; ++i) {
+            std::cout << "═";
+        }
+        std::cout << "╗\n";
+
+        // Middle with centered text
+        std::cout << "║ " << std::string(left_pad, ' ') << text << std::string(right_pad, ' ') << " ║\n";
+
+        // Bottom border
+        std::cout << "╚";
+        for (int i = 0; i < content_width + padding; ++i) {
+            std::cout << "═";
+        }
+        std::cout << "╝\n";
+    }
+
+    // =================================================================================================
+    // Title function
+    // =================================================================================================
+
+    /**
+     * @brief Print a centered title with decorative borders
+     * @param text Title text to display
+     * @param border_char Character to use for borders (default: '=')
+     *
+     * Example:
+     *   title("My Application");
+     *   // ========================================
+     *   //          My Application
+     *   // ========================================
+     */
+    inline void title(const std::string &text, char border_char = '=') {
+        int width = detail::get_terminal_width();
+        int text_len = text.length();
+
+        // Top border
+        std::cout << std::string(width, border_char) << "\n";
+
+        // Centered text
+        if (text_len >= width) {
+            std::cout << text << "\n";
+        } else {
+            int total_padding = width - text_len;
+            int left_pad = total_padding / 2;
+            std::cout << std::string(left_pad, ' ') << text << "\n";
+        }
+
+        // Bottom border
+        std::cout << std::string(width, border_char) << "\n";
+    }
+
+    // =================================================================================================
+    // Banner function
+    // =================================================================================================
+
+    /**
+     * @brief Print a large decorative banner
+     * @param text Banner text to display
+     * @param style Box style for the banner (default: Heavy)
+     *
+     * Example:
+     *   banner("WELCOME");
+     *   // ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+     *   // ┃                                        ┃
+     *   // ┃              WELCOME                   ┃
+     *   // ┃                                        ┃
+     *   // ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+     */
+    inline void banner(const std::string &text, BoxStyle style = BoxStyle::Heavy) {
+        // Box drawing characters for each style
+        const char *top_left, *top_right, *bottom_left, *bottom_right;
+        const char *horizontal, *vertical;
+
+        switch (style) {
+        case BoxStyle::Single:
+            top_left = "┌";
+            top_right = "┐";
+            bottom_left = "└";
+            bottom_right = "┘";
+            horizontal = "─";
+            vertical = "│";
+            break;
+        case BoxStyle::Double:
+            top_left = "╔";
+            top_right = "╗";
+            bottom_left = "╚";
+            bottom_right = "╝";
+            horizontal = "═";
+            vertical = "║";
+            break;
+        case BoxStyle::Rounded:
+            top_left = "╭";
+            top_right = "╮";
+            bottom_left = "╰";
+            bottom_right = "╯";
+            horizontal = "─";
+            vertical = "│";
+            break;
+        case BoxStyle::Heavy:
+            top_left = "┏";
+            top_right = "┓";
+            bottom_left = "┗";
+            bottom_right = "┛";
+            horizontal = "━";
+            vertical = "┃";
+            break;
+        case BoxStyle::Dashed:
+            top_left = "┏";
+            top_right = "┓";
+            bottom_left = "┗";
+            bottom_right = "┛";
+            horizontal = "╍";
+            vertical = "╏";
+            break;
+        case BoxStyle::ASCII:
+            top_left = "+";
+            top_right = "+";
+            bottom_left = "+";
+            bottom_right = "+";
+            horizontal = "-";
+            vertical = "|";
+            break;
+        }
+
+        int width = detail::get_terminal_width();
+        int text_len = text.length();
+        int content_width = width - 4; // Subtract 2 for borders and 2 for padding
+
+        if (text_len > content_width) {
+            content_width = text_len + 4;
+        }
+
+        int total_padding = content_width - text_len;
+        int left_pad = total_padding / 2;
+        int right_pad = total_padding - left_pad;
+
+        // Top border
+        std::cout << top_left;
+        for (int i = 0; i < content_width + 2; ++i) {
+            std::cout << horizontal;
+        }
+        std::cout << top_right << "\n";
+
+        // Empty line
+        std::cout << vertical;
+        for (int i = 0; i < content_width + 2; ++i) {
+            std::cout << " ";
+        }
+        std::cout << vertical << "\n";
+
+        // Middle with centered text
+        std::cout << vertical << " " << std::string(left_pad, ' ') << text << std::string(right_pad, ' ') << " "
+                  << vertical << "\n";
+
+        // Empty line
+        std::cout << vertical;
+        for (int i = 0; i < content_width + 2; ++i) {
+            std::cout << " ";
+        }
+        std::cout << vertical << "\n";
+
+        // Bottom border
+        std::cout << bottom_left;
+        for (int i = 0; i < content_width + 2; ++i) {
             std::cout << horizontal;
         }
         std::cout << bottom_right << "\n";
