@@ -2,7 +2,7 @@
 #include <doctest/doctest.h>
 
 #define LOGLEVEL Trace
-#include <echo/echo.hpp>
+#include <echo/banner.hpp>
 
 #include <sstream>
 #include <string>

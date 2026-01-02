@@ -1,6 +1,6 @@
 // Demonstration of separator functionality
 #define LOGLEVEL Trace
-#include <echo/echo.hpp>
+#include <echo/banner.hpp>
 
 int main() {
     echo::info("Echo Separator Demo");
