@@ -32,8 +32,10 @@
  *   - Step indicators (finite and infinite)
  *   - Thread-safe operations
  *   - Terminal-aware
+ *   - HEX color support with gradients
  */
 
+#include <echo/color.hpp>
 #include <echo/echo.hpp>
 
 #include <chrono>
@@ -100,6 +102,8 @@ namespace echo {
         std::string prefix_;
         std::string message_;
         bool is_running_ = true;
+        std::vector<std::string> gradient_colors_;
+        bool use_gradient_ = false;
 
         void init_frames() {
             switch (style_) {
@@ -176,6 +180,16 @@ namespace echo {
 
         void set_prefix(const std::string &prefix) { prefix_ = prefix; }
 
+        void set_color(const std::string &hex) {
+            gradient_colors_ = {hex};
+            use_gradient_ = false;
+        }
+
+        void set_gradient(const std::vector<std::string> &hexes) {
+            gradient_colors_ = hexes;
+            use_gradient_ = true;
+        }
+
         void tick() {
             if (!is_running_)
                 return;
@@ -183,10 +197,23 @@ namespace echo {
             std::lock_guard<std::mutex> lock(detail::get_wait_mutex());
             detail::clear_line();
 
+            // Get color for current frame
+            std::string color_code;
+            if (!gradient_colors_.empty()) {
+                if (use_gradient_) {
+                    // Cycle through gradient colors
+                    float pos = static_cast<float>(current_frame_) / static_cast<float>(frames_.size() - 1);
+                    color_code = detail::get_gradient_color(gradient_colors_, pos);
+                } else {
+                    // Single color
+                    color_code = detail::get_single_color(gradient_colors_[0]);
+                }
+            }
+
             std::cout << prefix_;
             if (!prefix_.empty())
                 std::cout << " ";
-            std::cout << frames_[current_frame_];
+            std::cout << color_code << frames_[current_frame_] << detail::reset_color();
             if (!message_.empty())
                 std::cout << " " << message_;
             std::cout << std::flush;
@@ -231,6 +258,8 @@ namespace echo {
         bool show_remaining_ = false;
         std::chrono::steady_clock::time_point start_time_;
         bool started_ = false;
+        std::vector<std::string> gradient_colors_;
+        bool use_gradient_ = false;
 
         std::string format_time(int seconds) const {
             int mins = seconds / 60;
@@ -261,6 +290,16 @@ namespace echo {
         void set_show_elapsed(bool show) { show_elapsed_ = show; }
 
         void set_show_remaining(bool show) { show_remaining_ = show; }
+
+        void set_color(const std::string &hex) {
+            gradient_colors_ = {hex};
+            use_gradient_ = false;
+        }
+
+        void set_gradient(const std::vector<std::string> &hexes) {
+            gradient_colors_ = hexes;
+            use_gradient_ = true;
+        }
 
         void tick() {
             if (current_ < total_) {
@@ -297,10 +336,23 @@ namespace echo {
             // Bar
             std::cout << "[";
             for (int i = 0; i < bar_width_; ++i) {
+                // Get color for this position
+                std::string color_code;
+                if (!gradient_colors_.empty()) {
+                    if (use_gradient_) {
+                        // Gradient follows progress
+                        float pos = static_cast<float>(i) / static_cast<float>(bar_width_ - 1);
+                        color_code = detail::get_gradient_color(gradient_colors_, pos);
+                    } else {
+                        // Single color
+                        color_code = detail::get_single_color(gradient_colors_[0]);
+                    }
+                }
+
                 if (i < filled - 1) {
-                    std::cout << fill_char_;
+                    std::cout << color_code << fill_char_ << detail::reset_color();
                 } else if (i == filled - 1 && filled < bar_width_) {
-                    std::cout << lead_char_;
+                    std::cout << color_code << lead_char_ << detail::reset_color();
                 } else {
                     std::cout << remainder_char_;
                 }
@@ -358,6 +410,7 @@ namespace echo {
         size_t current_step_ = 0;
         bool is_infinite_ = false;
         std::vector<bool> completed_steps_;
+        std::string step_color_;
 
       public:
         // Finite steps (known total)
@@ -374,6 +427,8 @@ namespace echo {
                 completed_steps_.push_back(false);
             }
         }
+
+        void set_color(const std::string &hex) { step_color_ = hex; }
 
         void next() {
             if (current_step_ < step_names_.size()) {
@@ -397,30 +452,37 @@ namespace echo {
 
         void display_current() {
             std::lock_guard<std::mutex> lock(detail::get_wait_mutex());
+            std::string color_code = detail::get_single_color(step_color_);
+            std::string reset = color_code.empty() ? "" : detail::reset_color();
 
             if (current_step_ < step_names_.size()) {
                 if (is_infinite_) {
-                    std::cout << "Step " << (current_step_ + 1) << ": " << step_names_[current_step_] << "\n";
+                    std::cout << color_code << "Step " << (current_step_ + 1) << ": " << step_names_[current_step_]
+                              << reset << "\n";
                 } else {
-                    std::cout << "Step " << (current_step_ + 1) << "/" << step_names_.size() << ": "
-                              << step_names_[current_step_] << "\n";
+                    std::cout << color_code << "Step " << (current_step_ + 1) << "/" << step_names_.size() << ": "
+                              << step_names_[current_step_] << reset << "\n";
                 }
             }
         }
 
         void display_completed() {
             std::lock_guard<std::mutex> lock(detail::get_wait_mutex());
+            std::string color_code = detail::get_single_color(step_color_);
+            std::string reset = color_code.empty() ? "" : detail::reset_color();
 
             if (current_step_ > 0 && current_step_ <= step_names_.size()) {
-                std::cout << "✓ " << step_names_[current_step_ - 1] << " - Complete\n";
+                std::cout << color_code << "✓ " << step_names_[current_step_ - 1] << " - Complete" << reset << "\n";
             }
         }
 
         void display_failed() {
             std::lock_guard<std::mutex> lock(detail::get_wait_mutex());
+            std::string color_code = detail::get_single_color(step_color_);
+            std::string reset = color_code.empty() ? "" : detail::reset_color();
 
             if (current_step_ > 0 && current_step_ <= step_names_.size()) {
-                std::cout << "✗ " << step_names_[current_step_ - 1] << " - Failed\n";
+                std::cout << color_code << "✗ " << step_names_[current_step_ - 1] << " - Failed" << reset << "\n";
             }
         }
 
