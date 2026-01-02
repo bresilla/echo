@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.0.7] - 2026-01-02
+
+### <!-- 0 -->⛰️  Features
+
+- Add wait.hpp with progress bars, spinners, and step indicators
+
+### <!-- 6 -->🧪 Testing
+
+- Add comprehensive tests for wait.hpp and rename test_separator to test_banner
+
 ## [0.0.6] - 2026-01-02
 
 ### <!-- 0 -->⛰️  Features
