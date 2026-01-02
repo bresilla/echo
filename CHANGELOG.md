@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.6] - 2026-01-02
+
+### <!-- 0 -->⛰️  Features
+
+- Add fancy box styles and banner functions
+
+### <!-- 3 -->📚 Documentation
+
+- Update README for banner.hpp
+
+### <!-- 6 -->🧪 Testing
+
+- Add comprehensive tests for banner functions
+
 ## [0.0.5] - 2026-01-02
 
 ### <!-- 0 -->⛰️  Features
