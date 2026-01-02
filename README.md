@@ -278,6 +278,137 @@ Output:
 
 All visual elements automatically detect your terminal width and adjust accordingly. Perfect for organizing log output into clear, visually distinct sections!
 
+### Progress & Waiting Indicators (wait.hpp)
+
+Echo provides progress bars, spinners, and step indicators for tracking long-running operations. Include `<echo/wait.hpp>` to access these features (it automatically includes `echo.hpp`):
+
+```cpp
+#include <echo/wait.hpp>  // Includes echo.hpp automatically
+```
+
+#### Progress Bars
+
+Track progress with customizable progress bars:
+
+```cpp
+// Basic progress bar
+echo::progress_bar bar(100);  // Total steps
+bar.set_prefix("Loading");
+bar.set_show_percentage(true);
+for (int i = 0; i < 100; ++i) {
+    bar.tick();  // Increment by 1
+}
+bar.finish();
+// Output: Loading [==========================>                       ] 50%
+
+// Progress bar with time tracking
+echo::progress_bar bar2(50);
+bar2.set_show_elapsed(true);
+bar2.set_show_remaining(true);
+for (int i = 0; i < 50; ++i) {
+    bar2.tick();
+}
+bar2.finish();
+// Output: [===================>              ] 75% [2s<1s]
+
+// Custom styling
+bar.set_fill_char('#');
+bar.set_lead_char('>');
+bar.set_remainder_char('-');
+bar.set_bar_width(40);
+
+// Direct progress setting
+bar.set_progress(50);  // Jump to 50%
+```
+
+#### Spinners
+
+Animated spinners for indeterminate operations (15 styles available):
+
+```cpp
+echo::spinner spin(echo::spinner_style::line);  // Classic: - \ | /
+spin.set_message("Processing...");
+
+while (processing) {
+    spin.tick();
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(spin.get_interval_ms())
+    );
+}
+spin.stop("✓ Done!");
+// Output: | Processing... → ✓ Done!
+```
+
+**Available spinner styles:**
+- `line` - Classic: `- \ | /`
+- `pipe` - Box drawing: `┤ ┘ ┴ └ ├ ┌ ┬ ┐`
+- `simple_dots` - Simple: `. .. ...`
+- `dots_scrolling` - Animated: `. .. ... .. .`
+- `flip` - Flip: `_ - \` ' ´`
+- `toggle` - Toggle: `= * -`
+- `layer` - Layers: `- = ≡`
+- `point` - Moving dot: `∙∙∙ ●∙∙ ∙●∙ ∙∙●`
+- `dqpb` - Letters: `d q p b`
+- `bouncing_bar` - Bar: `[====]`
+- `bouncing_ball` - Ball: `( ● )`
+- `aesthetic` - Progress-like: `▰▰▰▰▰▰▰`
+- `binary` - Binary: `010010 001100`
+- `grow_vertical` - Vertical: `▁ ▃ ▄ ▅ ▆ ▇`
+- `grow_horizontal` - Horizontal: `▏ ▎ ▍ ▌ ▋ ▊ ▉`
+
+#### Step Indicators
+
+Track multi-step workflows (supports both finite and infinite steps):
+
+```cpp
+// Finite steps (known total)
+echo::steps workflow({"Initialize", "Load", "Process", "Save"});
+workflow.next();      // Step 1/4: Initialize
+workflow.complete();  // ✓ Initialize - Complete
+workflow.next();      // Step 2/4: Load
+workflow.complete();  // ✓ Load - Complete
+
+// Infinite steps (unknown total)
+echo::steps infinite;
+infinite.add_step("Connecting");
+infinite.next();      // Step 1: Connecting
+infinite.complete();  // ✓ Connecting - Complete
+infinite.add_step("Downloading");
+infinite.next();      // Step 2: Downloading
+// Can keep adding steps indefinitely
+
+// Handle failures
+workflow.next();
+workflow.fail();  // ✗ Process - Failed
+```
+
+#### Combined Example
+
+```cpp
+echo::steps main({"Init", "Download", "Process"});
+
+main.next();
+// ... initialization code ...
+main.complete();
+
+main.next();
+echo::progress_bar download(100);
+download.set_prefix("  ");
+download.set_show_percentage(true);
+for (int i = 0; i < 100; ++i) {
+    download.tick();
+}
+download.finish();
+main.complete();
+
+main.next();
+echo::spinner process(echo::spinner_style::aesthetic);
+process.set_message("Processing...");
+// ... processing with spinner.tick() ...
+process.stop("✓ Complete!");
+main.complete();
+```
+
 ## Building and Testing
 
 ### Build
