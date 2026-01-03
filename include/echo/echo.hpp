@@ -8,6 +8,9 @@
  *   #include <echo/echo.hpp>
  *   echo::info("Hello, world!");
  *   echo::debug("Value: ", 42);
+ *   echo::info("Colored message").red();
+ *   echo::warn("Custom color").hex("#FF5733");
+ *   echo::error("RGB color").rgb(255, 87, 51).bold();
  *
  * Log level control:
  *
@@ -46,6 +49,13 @@
  * Structured logging:
  *   - Use kv() for key-value pairs: echo::info("Login: ", kv("user", "john", "age", 25))
  *   - Output format: key=value key2=value2
+ *
+ * Fluent interface with colors:
+ *   - Named colors: .red(), .green(), .blue(), .yellow(), .cyan(), .magenta(), .white(), .gray()
+ *   - Custom hex: .hex("#FF5733") or .hex("FF5733")
+ *   - Custom RGB: .rgb(255, 87, 51)
+ *   - Modifiers: .bold(), .italic(), .underline()
+ *   - Chaining: echo::info("message").red().bold().italic()
  *
  * Supports logging of:
  *   - Anything convertible to string (via operator<<)
@@ -346,7 +356,11 @@ namespace echo {
     /**
      * @brief Proxy object for fluent logging with color methods
      *
-     * Allows chaining like: echo::info("message").red()
+     * Allows chaining like:
+     *   echo::info("message").red()
+     *   echo::info("message").hex("#FF5733")
+     *   echo::info("message").rgb(255, 87, 51)
+     *   echo::info("message").cyan().bold().italic()
      */
     template <Level L> class log_proxy {
       private:
@@ -395,6 +409,43 @@ namespace echo {
         }
         log_proxy &bold() {
             color_code_ += "\033[1m";
+            return *this;
+        }
+        log_proxy &italic() {
+            color_code_ += "\033[3m";
+            return *this;
+        }
+        log_proxy &underline() {
+            color_code_ += "\033[4m";
+            return *this;
+        }
+
+        // Custom hex color
+        log_proxy &hex(const std::string &hex_color) {
+// Use the color utilities from color.hpp if available
+#ifdef ECHO_COLOR_HPP
+            color_code_ = detail::rgb_to_ansi(detail::hex_to_rgb(hex_color));
+#else
+            // Fallback: parse hex manually
+            if (hex_color.length() >= 6) {
+                std::string h = hex_color;
+                if (h[0] == '#')
+                    h = h.substr(1);
+                if (h.length() == 6) {
+                    int r = std::stoi(h.substr(0, 2), nullptr, 16);
+                    int g = std::stoi(h.substr(2, 2), nullptr, 16);
+                    int b = std::stoi(h.substr(4, 2), nullptr, 16);
+                    color_code_ =
+                        "\033[38;2;" + std::to_string(r) + ";" + std::to_string(g) + ";" + std::to_string(b) + "m";
+                }
+            }
+#endif
+            return *this;
+        }
+
+        // Custom RGB color
+        log_proxy &rgb(int r, int g, int b) {
+            color_code_ = "\033[38;2;" + std::to_string(r) + ";" + std::to_string(g) + ";" + std::to_string(b) + "m";
             return *this;
         }
 

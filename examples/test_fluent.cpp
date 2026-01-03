@@ -23,5 +23,26 @@ int main() {
     std::string stuff = "stuff";
     echo::info(cool + " " + stuff).cyan();
 
+    // Custom hex colors
+    echo::info("Custom hex color #FF5733").hex("#FF5733");
+    echo::info("Custom hex color FF6B9D").hex("FF6B9D");
+    echo::info("Custom hex color #00D9FF").hex("#00D9FF");
+
+    // Custom RGB colors
+    echo::info("Custom RGB (255, 87, 51)").rgb(255, 87, 51);
+    echo::info("Custom RGB (107, 255, 157)").rgb(107, 255, 157);
+    echo::info("Custom RGB (255, 215, 0)").rgb(255, 215, 0);
+
+    // Combining with bold
+    echo::warn("Bold custom color").hex("#9D00FF").bold();
+
+    // Text modifiers
+    echo::info("Bold text").bold();
+    echo::info("Italic text").italic();
+    echo::info("Underlined text").underline();
+    echo::info("Bold + Italic").bold().italic();
+    echo::info("Red + Bold + Italic").red().bold().italic();
+    echo::info("Custom color + Bold + Italic + Underline").hex("#FF1493").bold().italic().underline();
+
     return 0;
 }
