@@ -212,9 +212,13 @@ namespace echo {
      *                                    // ╰──────╯
      */
     inline void box(const std::string &text, BoxStyle style = BoxStyle::Single) {
-        // Box drawing characters for each style
-        const char *top_left, *top_right, *bottom_left, *bottom_right;
-        const char *horizontal, *vertical;
+        // Box drawing characters for each style (initialized to Single style as default)
+        const char *top_left = "┌";
+        const char *top_right = "┐";
+        const char *bottom_left = "└";
+        const char *bottom_right = "┘";
+        const char *horizontal = "─";
+        const char *vertical = "│";
 
         switch (style) {
         case BoxStyle::Single:
@@ -388,9 +392,13 @@ namespace echo {
      *   // ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
      */
     inline void banner(const std::string &text, BoxStyle style = BoxStyle::Heavy) {
-        // Box drawing characters for each style
-        const char *top_left, *top_right, *bottom_left, *bottom_right;
-        const char *horizontal, *vertical;
+        // Box drawing characters for each style (initialized to Heavy style as default)
+        const char *top_left = "┏";
+        const char *top_right = "┓";
+        const char *bottom_left = "┗";
+        const char *bottom_right = "┛";
+        const char *horizontal = "━";
+        const char *vertical = "┃";
 
         switch (style) {
         case BoxStyle::Single:
@@ -590,9 +598,13 @@ namespace echo {
             return;
         }
 
-        // Get box characters (same as above)
-        const char *top_left, *top_right, *bottom_left, *bottom_right;
-        const char *horizontal, *vertical;
+        // Get box characters (same as above, initialized to Single style as default)
+        const char *top_left = "┌";
+        const char *top_right = "┐";
+        const char *bottom_left = "└";
+        const char *bottom_right = "┘";
+        const char *horizontal = "─";
+        const char *vertical = "│";
 
         switch (style) {
         case BoxStyle::Single:

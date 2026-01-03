@@ -11,14 +11,26 @@
  *
  * Log level control:
  *
- *   1. Compile-time via build system:
+ *   1. Compile-time via build system (disables env var):
  *      -DLOGLEVEL=Trace|Debug|Info|Warn|Error|Critical
+ *      -DECHOLEVEL=Trace|Debug|Info|Warn|Error|Critical
+ *      (Both are supported; LOGLEVEL takes precedence if both are defined)
+ *      (When set, environment variables are ignored)
  *
- *   2. In-file before including (overrides build system):
+ *   2. In-file before including (overrides build system, disables env var):
  *      #define LOGLEVEL Trace
  *      #include <echo/echo.hpp>
+ *      or
+ *      #define ECHOLEVEL Trace
+ *      #include <echo/echo.hpp>
  *
- *   3. Runtime control:
+ *   3. Environment variable (only when no compile-time level set):
+ *      export LOGLEVEL=Debug
+ *      export ECHOLEVEL=Trace
+ *      (Both are supported; LOGLEVEL takes precedence if both are set)
+ *      (Only works if no -DLOGLEVEL/-DECHOLEVEL was specified)
+ *
+ *   4. Runtime control (always available):
  *      echo::set_level(echo::Level::Debug);
  *      auto level = echo::get_level();
  *
@@ -41,6 +53,7 @@
  *   - Objects with print() method
  */
 
+#include <cstdlib>
 #include <iostream>
 #include <mutex>
 #include <sstream>
@@ -64,10 +77,15 @@ namespace echo {
     // Compile-time log level configuration
     // =================================================================================================
 
+// Accept both LOGLEVEL and ECHOLEVEL, with LOGLEVEL taking precedence
 #if defined(LOGLEVEL)
 #define ECHO_STRINGIFY(x) #x
 #define ECHO_TOSTRING(x) ECHO_STRINGIFY(x)
 #define ECHO_LOGLEVEL_STR ECHO_TOSTRING(LOGLEVEL)
+#elif defined(ECHOLEVEL)
+#define ECHO_STRINGIFY(x) #x
+#define ECHO_TOSTRING(x) ECHO_STRINGIFY(x)
+#define ECHO_LOGLEVEL_STR ECHO_TOSTRING(ECHOLEVEL)
 #endif
 
     namespace detail {
@@ -86,7 +104,7 @@ namespace echo {
         // =================================================================================================
 
         inline constexpr Level parse_level() {
-#if defined(LOGLEVEL)
+#if defined(LOGLEVEL) || defined(ECHOLEVEL)
             constexpr const char *level_str = ECHO_LOGLEVEL_STR;
             if (level_str[0] == 'T' || level_str[0] == 't')
                 return Level::Trace;
@@ -102,8 +120,11 @@ namespace echo {
                 return Level::Critical;
             if (level_str[0] == 'O' || level_str[0] == 'o')
                 return Level::Off;
+#else
+            // When no compile-time level is set, use Trace to allow runtime/env control
+            return Level::Trace;
 #endif
-            return Level::Info; // Default level
+            return Level::Info; // Fallback (should never reach here)
         }
 
         inline constexpr Level ACTIVE_LEVEL = parse_level();
@@ -112,8 +133,62 @@ namespace echo {
         // Runtime log level control
         // =================================================================================================
 
+        // Parse level from string (case-insensitive)
+        inline Level parse_level_from_string(const char *str) {
+            if (!str || str[0] == '\0')
+                return Level::Off;
+
+            char first = str[0];
+            // Convert to lowercase for comparison
+            if (first >= 'A' && first <= 'Z')
+                first = first + ('a' - 'A');
+
+            switch (first) {
+            case 't':
+                return Level::Trace;
+            case 'd':
+                return Level::Debug;
+            case 'i':
+                return Level::Info;
+            case 'w':
+                return Level::Warn;
+            case 'e':
+                return Level::Error;
+            case 'c':
+                return Level::Critical;
+            case 'o':
+                return Level::Off;
+            default:
+                return Level::Off;
+            }
+        }
+
+        // Initialize runtime level from environment variable
+        // Only used when no compile-time level is set
+        inline Level init_runtime_level() {
+#if !defined(LOGLEVEL) && !defined(ECHOLEVEL)
+            // Only check environment variables if no compile-time level was set
+            const char *env_level = std::getenv("LOGLEVEL");
+            if (!env_level) {
+                env_level = std::getenv("ECHOLEVEL");
+            }
+
+            if (env_level) {
+                Level parsed = parse_level_from_string(env_level);
+                if (parsed != Level::Off) {
+                    return parsed;
+                }
+            }
+            // Default to Info when no env var is set and no compile-time level
+            return Level::Info;
+#else
+            // When compile-time level is set, use Off to defer to ACTIVE_LEVEL
+            return Level::Off;
+#endif
+        }
+
         inline Level &get_runtime_level() {
-            static Level runtime_level = Level::Off; // Off means "use compile-time level"
+            static Level runtime_level = init_runtime_level();
             return runtime_level;
         }
 
