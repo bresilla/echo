@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.10] - 2026-01-03
+
+### <!-- 0 -->⛰️  Features
+
+- Add fluent API for custom colors and text styles
+
 ## [0.0.9] - 2026-01-03
 
 ### <!-- 0 -->⛰️  Features
