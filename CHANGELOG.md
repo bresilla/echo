@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.0.8] - 2026-01-03
+
+### <!-- 0 -->⛰️  Features
+
+- Add support for compile-time and environment log levels
+- Add full-width auto-sizing progress bars
+- Add configurable bar styles, themes, and advanced features to progress_bar
+- Add HEX color and gradient support to Echo
+
+### <!-- 1 -->🐛 Bug Fixes
+
+- Initialize box characters for banner functions
+
+### <!-- 3 -->📚 Documentation
+
+- Simplify README, remove emojis and fluff
+- Create comprehensive README with all features
+
 ## [0.0.7] - 2026-01-02
 
 ### <!-- 0 -->⛰️  Features
