@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.0.9] - 2026-01-03
+
+### <!-- 0 -->⛰️  Features
+
+- Implement fluent interface for colored logging
+
+### <!-- 1 -->🐛 Bug Fixes
+
+- Relocate test example source files
+
 ## [0.0.8] - 2026-01-03
 
 ### <!-- 0 -->⛰️  Features

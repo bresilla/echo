@@ -1,6 +1,6 @@
 .{
     .name = .echo,
-    .version = "0.0.8",
+    .version = "0.0.9",
     .fingerprint = 0x52be076754a90d6e,
     .minimum_zig_version = "0.13.0",
     .dependencies = .{
