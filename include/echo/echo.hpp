@@ -340,20 +340,115 @@ namespace echo {
     } // namespace detail
 
     // =================================================================================================
+    // Fluent logging interface with color support
+    // =================================================================================================
+
+    /**
+     * @brief Proxy object for fluent logging with color methods
+     *
+     * Allows chaining like: echo::info("message").red()
+     */
+    template <Level L> class log_proxy {
+      private:
+        std::string message_;
+        std::string color_code_;
+
+      public:
+        template <typename... Args> log_proxy(const Args &...args) {
+            std::ostringstream oss;
+            detail::append_args(oss, args...);
+            message_ = oss.str();
+        }
+
+        // Color methods
+        log_proxy &red() {
+            color_code_ = "\033[31m";
+            return *this;
+        }
+        log_proxy &green() {
+            color_code_ = "\033[32m";
+            return *this;
+        }
+        log_proxy &yellow() {
+            color_code_ = "\033[33m";
+            return *this;
+        }
+        log_proxy &blue() {
+            color_code_ = "\033[34m";
+            return *this;
+        }
+        log_proxy &magenta() {
+            color_code_ = "\033[35m";
+            return *this;
+        }
+        log_proxy &cyan() {
+            color_code_ = "\033[36m";
+            return *this;
+        }
+        log_proxy &white() {
+            color_code_ = "\033[37m";
+            return *this;
+        }
+        log_proxy &gray() {
+            color_code_ = "\033[90m";
+            return *this;
+        }
+        log_proxy &bold() {
+            color_code_ += "\033[1m";
+            return *this;
+        }
+
+        // Destructor performs the actual logging
+        ~log_proxy() {
+            if constexpr (static_cast<int>(L) >= static_cast<int>(detail::ACTIVE_LEVEL)) {
+                // Runtime level check
+                if (static_cast<int>(L) < static_cast<int>(detail::get_effective_level())) {
+                    return;
+                }
+
+                std::lock_guard<std::mutex> lock(detail::get_log_mutex());
+                std::ostream &out = (L >= Level::Error) ? std::cerr : std::cout;
+#ifdef ECHO_ENABLE_TIMESTAMP
+                out << "[" << detail::get_timestamp() << "]";
+#endif
+                out << detail::level_color(L) << "[" << detail::level_name(L) << "]" << detail::RESET << " ";
+
+                if (!color_code_.empty()) {
+                    out << color_code_ << message_ << detail::RESET << "\n";
+                } else {
+                    out << message_ << "\n";
+                }
+            }
+        }
+    };
+
+    // =================================================================================================
     // Public logging functions
     // =================================================================================================
 
-    template <typename... Args> inline void trace(const Args &...args) { detail::log<Level::Trace>(args...); }
+    template <typename... Args> inline log_proxy<Level::Trace> trace(const Args &...args) {
+        return log_proxy<Level::Trace>(args...);
+    }
 
-    template <typename... Args> inline void debug(const Args &...args) { detail::log<Level::Debug>(args...); }
+    template <typename... Args> inline log_proxy<Level::Debug> debug(const Args &...args) {
+        return log_proxy<Level::Debug>(args...);
+    }
 
-    template <typename... Args> inline void info(const Args &...args) { detail::log<Level::Info>(args...); }
+    template <typename... Args> inline log_proxy<Level::Info> info(const Args &...args) {
+        return log_proxy<Level::Info>(args...);
+    }
 
-    template <typename... Args> inline void warn(const Args &...args) { detail::log<Level::Warn>(args...); }
+    template <typename... Args> inline log_proxy<Level::Warn> warn(const Args &...args) {
+        return log_proxy<Level::Warn>(args...);
+    }
 
-    template <typename... Args> inline void error(const Args &...args) { detail::log<Level::Error>(args...); }
+    template <typename... Args> inline log_proxy<Level::Error> error(const Args &...args) {
+        return log_proxy<Level::Error>(args...);
+    }
 
-    template <typename... Args> inline void critical(const Args &...args) { detail::log<Level::Critical>(args...); }
+    template <typename... Args> inline log_proxy<Level::Critical> critical(const Args &...args) {
+        return log_proxy<Level::Critical>(args...);
+    }
 
     // =================================================================================================
     // Utility: Get/check current log level
