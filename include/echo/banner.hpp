@@ -510,9 +510,13 @@ namespace echo {
         std::string color_code = detail::get_single_color(color);
         std::string reset = color_code.empty() ? "" : detail::reset_color();
 
-        // Get box characters
-        const char *top_left, *top_right, *bottom_left, *bottom_right;
-        const char *horizontal, *vertical;
+        // Get box characters (initialized to Single style as default)
+        const char *top_left = "┌";
+        const char *top_right = "┐";
+        const char *bottom_left = "└";
+        const char *bottom_right = "┘";
+        const char *horizontal = "─";
+        const char *vertical = "│";
 
         switch (style) {
         case BoxStyle::Single:
@@ -767,9 +771,13 @@ namespace echo {
         std::string color_code = detail::get_single_color(color);
         std::string reset = color_code.empty() ? "" : detail::reset_color();
 
-        // Get box characters (same switch as box function)
-        const char *top_left, *top_right, *bottom_left, *bottom_right;
-        const char *horizontal, *vertical;
+        // Get box characters (initialized to Heavy style as default)
+        const char *top_left = "┏";
+        const char *top_right = "┓";
+        const char *bottom_left = "┗";
+        const char *bottom_right = "┛";
+        const char *horizontal = "━";
+        const char *vertical = "┃";
 
         switch (style) {
         case BoxStyle::Single:
