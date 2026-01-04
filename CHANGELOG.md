@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.12] - 2026-01-04
+
+### <!-- 1 -->🐛 Bug Fixes
+
+- Resolve `echo()` function ambiguity
+
 ## [0.0.11] - 2026-01-04
 
 ### <!-- 0 -->⛰️  Features
