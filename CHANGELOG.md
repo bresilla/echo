@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.14] - 2026-01-04
+
+### <!-- 0 -->⛰️  Features
+
+- Enhance performance and introduce .once() logging
+
 ## [0.0.13] - 2026-01-04
 
 ### <!-- 7 -->⚙️ Miscellaneous Tasks

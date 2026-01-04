@@ -9,12 +9,15 @@
 ## Features
 
 - **Header-only** - Just include and use, no linking required
-- **Colored output** - Automatic coloring for log levels, HEX color support with gradients
+- **Fluent interface** - Chain colors and modifiers: `.red().bold().italic()`
+- **Simple echo()** - Print without log levels: `echo("text").cyan()`
+- **Print once** - `.once()` for loop-safe logging
+- **Colored output** - Named colors, HEX (#FF5733), RGB (255,87,51), gradients
 - **Progress bars** - 6 visual styles, auto-sizing, byte/speed formatting, themes
 - **Visual elements** - Boxes, banners, separators with Unicode art
-- **Zero overhead** - Compile-time log levels eliminate runtime cost
+- **Zero overhead** - Compile-time log levels eliminate runtime cost (literally 0ns!)
 - **Thread-safe** - Concurrent logging without corruption
-- **Flexible** - Runtime control, structured logging, custom types
+- **Flexible log levels** - LOGLEVEL/ECHOLEVEL via compile-time, environment, or runtime
 - **No dependencies** - Standard library only
 
 ## Quick Start
@@ -23,9 +26,25 @@
 #include <echo/echo.hpp>
 
 int main() {
+    // Simple printing (no log levels)
+    echo("Hello, world!");
+    echo("Colored text").red().bold();
+    
+    // Logging with levels
     echo::info("Hello, world!");
     echo::debug("Value: ", 42);
-    echo::error("Something went wrong!");
+    echo::error("Something went wrong!").red();
+    
+    // Fluent interface with colors
+    echo::warn("Warning!").yellow().bold();
+    echo::info("Custom color").hex("#FF1493");
+    echo::error("RGB color").rgb(255, 87, 51);
+    
+    // Print only once (useful in loops)
+    for (int i = 0; i < 1000; i++) {
+        echo::info("This prints only once!").once();
+    }
+    
     return 0;
 }
 ```
