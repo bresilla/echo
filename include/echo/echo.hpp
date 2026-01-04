@@ -63,7 +63,8 @@
  *   - Custom RGB: .rgb(255, 87, 51)
  *   - Modifiers: .bold(), .italic(), .underline()
  *   - Print once: .once() - prints only the first time (useful in loops)
- *   - Chaining: echo::info("message").red().bold().italic().once()
+ *   - Print in place: .inplace() - clears line and prints on same line (for updates)
+ *   - Chaining: echo::info("message").red().bold().italic().once().inplace()
  *
  * Supports logging of:
  *   - Anything convertible to string (via operator<<)
@@ -395,6 +396,7 @@ namespace echo {
         std::string message_;
         std::string color_code_;
         bool skip_print_ = false;
+        bool inplace_ = false;
 
       public:
         template <typename... Args> log_proxy(const Args &...args) {
@@ -494,6 +496,12 @@ namespace echo {
             return *this;
         }
 
+        // Print in place (clear line and print on same line)
+        log_proxy &inplace() {
+            inplace_ = true;
+            return *this;
+        }
+
         // Destructor performs the actual logging
         ~log_proxy() {
             // Check if we should skip printing (e.g., from .once())
@@ -509,16 +517,28 @@ namespace echo {
 
                 std::lock_guard<std::mutex> lock(detail::get_log_mutex());
                 std::ostream &out = (L >= Level::Error) ? std::cerr : std::cout;
+
+                // Clear line if inplace
+                if (inplace_) {
+                    out << "\r\033[K"; // \r = carriage return, \033[K = clear to end of line
+                }
+
 #ifdef ECHO_ENABLE_TIMESTAMP
                 out << "[" << detail::get_timestamp() << "]";
 #endif
                 out << detail::level_color(L) << "[" << detail::level_name(L) << "]" << detail::RESET << " ";
 
                 if (!color_code_.empty()) {
-                    out << color_code_ << message_ << detail::RESET << "\n";
+                    out << color_code_ << message_ << detail::RESET;
                 } else {
-                    out << message_ << "\n";
+                    out << message_;
                 }
+
+                // Only add newline if not inplace
+                if (!inplace_) {
+                    out << "\n";
+                }
+                out << std::flush; // Always flush for inplace to work
             }
         }
     };
@@ -537,6 +557,7 @@ namespace echo {
         std::string message_;
         std::string color_code_;
         bool skip_print_ = false;
+        bool inplace_ = false;
 
       public:
         template <typename... Args> print_proxy(const Args &...args) {
@@ -627,6 +648,12 @@ namespace echo {
             return *this;
         }
 
+        // Print in place (clear line and print on same line)
+        print_proxy &inplace() {
+            inplace_ = true;
+            return *this;
+        }
+
         // Destructor performs the actual printing
         ~print_proxy() {
             // Check if we should skip printing (e.g., from .once())
@@ -635,11 +662,23 @@ namespace echo {
             }
 
             std::lock_guard<std::mutex> lock(detail::get_log_mutex());
-            if (!color_code_.empty()) {
-                std::cout << color_code_ << message_ << detail::RESET << "\n";
-            } else {
-                std::cout << message_ << "\n";
+
+            // Clear line if inplace
+            if (inplace_) {
+                std::cout << "\r\033[K"; // \r = carriage return, \033[K = clear to end of line
             }
+
+            if (!color_code_.empty()) {
+                std::cout << color_code_ << message_ << detail::RESET;
+            } else {
+                std::cout << message_;
+            }
+
+            // Only add newline if not inplace
+            if (!inplace_) {
+                std::cout << "\n";
+            }
+            std::cout << std::flush; // Always flush for inplace to work
         }
     };
 

@@ -527,6 +527,71 @@ int main() {
 }
 ```
 
+## Performance
+
+Echo is designed to be **invisible in production code** when used with compile-time log levels.
+
+### Zero Overhead with Compile-Time Filtering
+
+When you set `-DLOGLEVEL=Error` (or any level), filtered log statements are **completely removed** from the binary:
+
+```cpp
+// Compiled with -DLOGLEVEL=Error
+echo::debug("expensive", calculate());  // ← Doesn't exist in binary (0 ns)
+echo::info("expensive", calculate());   // ← Doesn't exist in binary (0 ns)
+echo::error("This runs", calculate());  // ← Exists in binary
+```
+
+**The `calculate()` function is NEVER called for filtered logs!**
+
+### Performance Numbers
+
+| Scenario | Overhead | Notes |
+|----------|----------|-------|
+| **Compile-time filtered** | **0 ns** | Code doesn't exist in binary |
+| Runtime filtered | ~8 ns | Just an integer comparison |
+| `.once()` first call | ~50 ns | Hash map insert |
+| `.once()` after first | ~30 ns | Hash map lookup + skip |
+| Actually printing | ~2 μs | String format + mutex + I/O |
+
+### Best Practices
+
+**✅ DO: Use compile-time levels in production**
+```cmake
+# CMakeLists.txt
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_compile_definitions(LOGLEVEL=Error)
+endif()
+```
+
+**✅ DO: Use `.once()` in loops**
+```cpp
+for (int i = 0; i < 1000000; i++) {
+    echo::warn("Warning").once();  // Prints once, then free!
+}
+```
+
+**✅ DO: Don't worry about expensive args with compile-time filtering**
+```cpp
+// With -DLOGLEVEL=Error, expensive_calc() NEVER runs!
+echo::debug("Result: ", expensive_calc());
+```
+
+**❌ DON'T: Use `echo()` in performance-critical loops**
+```cpp
+// echo() always prints - no filtering
+for (int i = 0; i < 1000000; i++) {
+    echo("iteration");  // BAD - prints 1M times
+}
+
+// Use log levels instead
+for (int i = 0; i < 1000000; i++) {
+    echo::debug("iteration").once();  // GOOD - compile-time filtered
+}
+```
+
+See [PERFORMANCE.md](PERFORMANCE.md) for detailed benchmarks and optimization guide.
+
 ## Configuration
 
 ### Compile-Time Options
@@ -534,6 +599,7 @@ int main() {
 | Option | Description | Default |
 |--------|-------------|---------|
 | `LOGLEVEL` | Minimum log level (Trace\|Debug\|Info\|Warn\|Error\|Critical\|Off) | `Info` |
+| `ECHOLEVEL` | Alternative to LOGLEVEL (LOGLEVEL takes precedence) | `Info` |
 | `ECHO_ENABLE_TIMESTAMP` | Enable timestamps in HH:MM:SS format | Disabled |
 
 ### Build System Support
@@ -542,7 +608,11 @@ int main() {
 # Auto-detect build system
 make build
 
-# Or specify explicitly
+# With log level
+make build LOGLEVEL=Error
+make build ECHOLEVEL=Debug
+
+# Or specify build system explicitly
 BUILD_SYSTEM=cmake make build
 BUILD_SYSTEM=xmake make build
 BUILD_SYSTEM=zig make build
@@ -598,6 +668,69 @@ Contributions are welcome. Please submit issues or pull requests.
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
+
+## Quick Reference
+
+### All Features at a Glance
+
+```cpp
+#include <echo/echo.hpp>
+
+// Simple printing (no log levels, always shows)
+echo("Hello");
+echo("Colored").red().bold().italic();
+echo("Custom").hex("#FF1493").underline();
+echo("RGB").rgb(255, 87, 51);
+
+// Logging with levels (shows [level] prefix, respects filtering)
+echo::trace("Trace");    // Level 0
+echo::debug("Debug");    // Level 1
+echo::info("Info");      // Level 2 (default)
+echo::warn("Warning");   // Level 3
+echo::error("Error");    // Level 4
+echo::critical("Critical"); // Level 5
+
+// Fluent interface - chain anything!
+echo::info("Message").red().bold().italic().underline();
+echo::warn("Custom").hex("#00FFFF").bold();
+echo::error("RGB").rgb(255, 0, 0).italic();
+
+// Print once (loop-safe)
+for (int i = 0; i < 1000; i++) {
+    echo::info("Prints once").once();
+    echo("Also once").cyan().once();
+}
+
+// Log level control
+#define LOGLEVEL Error        // Compile-time (zero overhead!)
+LOGLEVEL=Debug ./myapp        // Environment variable
+echo::set_level(Level::Warn); // Runtime API
+
+// Named colors
+.red() .green() .blue() .yellow() .cyan() .magenta() .white() .gray()
+
+// Custom colors
+.hex("#FF5733")  // HEX color
+.rgb(255, 87, 51) // RGB color
+
+// Text modifiers
+.bold() .italic() .underline()
+
+// Special
+.once()  // Print only once (per location)
+```
+
+## Examples
+
+See the `examples/` directory for complete working examples:
+
+- `test_echo.cpp` - Simple echo() usage
+- `test_fluent.cpp` - Fluent interface with colors
+- `test_once.cpp` - .once() in loops
+- `test_level_demo.cpp` - Log level control
+- `performance_demo.cpp` - Performance benchmarks
+- `color_demo.cpp` - Color and styling examples
+- `advanced_progress_demo.cpp` - Progress bars and spinners
 
 ## Acknowledgments
 
