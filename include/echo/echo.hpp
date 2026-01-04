@@ -93,6 +93,14 @@ namespace echo {
 
     enum class Level { Trace = 0, Debug = 1, Info = 2, Warn = 3, Error = 4, Critical = 5, Off = 6 };
 
+#ifdef ECHO_LOG_ENABLED
+    // Forward declarations for file logging (defined in log.hpp)
+    namespace log::detail {
+        template <Level L> struct file_writer;
+        struct file_writer_print;
+    } // namespace log::detail
+#endif
+
     // =================================================================================================
     // Compile-time log level configuration
     // =================================================================================================
@@ -398,6 +406,11 @@ namespace echo {
         bool skip_print_ = false;
         bool inplace_ = false;
 
+#ifdef ECHO_LOG_ENABLED
+        // Friend declaration for log.hpp to access private members
+        template <Level> friend struct log::detail::file_writer;
+#endif
+
       public:
         template <typename... Args> log_proxy(const Args &...args) {
             // Only build message if it will be printed (compile-time check)
@@ -502,6 +515,11 @@ namespace echo {
             return *this;
         }
 
+#ifdef ECHO_LOG_ENABLED
+        // Log to file (only available when log.hpp is included)
+        log_proxy &log();
+#endif
+
         // Destructor performs the actual logging
         ~log_proxy() {
             // Check if we should skip printing (e.g., from .once())
@@ -558,6 +576,11 @@ namespace echo {
         std::string color_code_;
         bool skip_print_ = false;
         bool inplace_ = false;
+
+#ifdef ECHO_LOG_ENABLED
+        // Friend declaration for log.hpp to access private members
+        friend struct log::detail::file_writer_print;
+#endif
 
       public:
         template <typename... Args> print_proxy(const Args &...args) {
@@ -653,6 +676,11 @@ namespace echo {
             inplace_ = true;
             return *this;
         }
+
+#ifdef ECHO_LOG_ENABLED
+        // Log to file (only available when log.hpp is included)
+        print_proxy &log();
+#endif
 
         // Destructor performs the actual printing
         ~print_proxy() {
@@ -764,6 +792,30 @@ namespace echo {
      * Usage (global): ::echo("message").red()
      */
     template <typename... Args> inline print_proxy print(const Args &...args) { return print_proxy(args...); }
+
+    // =================================================================================================
+    // File logging support (only when log.hpp is included)
+    // =================================================================================================
+
+#ifdef ECHO_LOG_ENABLED
+    namespace log::detail {
+        // Forward declarations for file writing functions
+        template <Level L> void write_to_file(log_proxy<L> &proxy, Level level);
+        void write_to_file(print_proxy &proxy);
+    } // namespace log::detail
+
+    // Implementation of log_proxy::log()
+    template <Level L> inline log_proxy<L> &log_proxy<L>::log() {
+        log::detail::write_to_file(*this, L);
+        return *this;
+    }
+
+    // Implementation of print_proxy::log()
+    inline print_proxy &print_proxy::log() {
+        log::detail::write_to_file(*this);
+        return *this;
+    }
+#endif
 
 } // namespace echo
 

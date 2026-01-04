@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.18] - 2026-01-04
+
+### <!-- 0 -->⛰️  Features
+
+- Add file logging capabilities
+
 ## [0.0.17] - 2026-01-04
 
 ### <!-- 0 -->⛰️  Features
