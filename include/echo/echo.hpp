@@ -6,19 +6,41 @@
  *
  * Usage:
  *   #include <echo/echo.hpp>
+ *
+ *   // Simple printing (no log levels, always shows, no prefix)
+ *   echo("Hello, world!");
+ *   echo("Colored text").red();
+ *   echo("Custom color").hex("#FF5733").bold();
+ *
+ *   // Logging with levels (shows [level] prefix, respects log level filtering)
  *   echo::info("Hello, world!");
  *   echo::debug("Value: ", 42);
+ *   echo::info("Colored message").red();
+ *   echo::warn("Custom color").hex("#FF5733");
+ *   echo::error("RGB color").rgb(255, 87, 51).bold();
  *
  * Log level control:
  *
- *   1. Compile-time via build system:
+ *   1. Compile-time via build system (disables env var):
  *      -DLOGLEVEL=Trace|Debug|Info|Warn|Error|Critical
+ *      -DECHOLEVEL=Trace|Debug|Info|Warn|Error|Critical
+ *      (Both are supported; LOGLEVEL takes precedence if both are defined)
+ *      (When set, environment variables are ignored)
  *
- *   2. In-file before including (overrides build system):
+ *   2. In-file before including (overrides build system, disables env var):
  *      #define LOGLEVEL Trace
  *      #include <echo/echo.hpp>
+ *      or
+ *      #define ECHOLEVEL Trace
+ *      #include <echo/echo.hpp>
  *
- *   3. Runtime control:
+ *   3. Environment variable (only when no compile-time level set):
+ *      export LOGLEVEL=Debug
+ *      export ECHOLEVEL=Trace
+ *      (Both are supported; LOGLEVEL takes precedence if both are set)
+ *      (Only works if no -DLOGLEVEL/-DECHOLEVEL was specified)
+ *
+ *   4. Runtime control (always available):
  *      echo::set_level(echo::Level::Debug);
  *      auto level = echo::get_level();
  *
@@ -35,17 +57,27 @@
  *   - Use kv() for key-value pairs: echo::info("Login: ", kv("user", "john", "age", 25))
  *   - Output format: key=value key2=value2
  *
+ * Fluent interface with colors:
+ *   - Named colors: .red(), .green(), .blue(), .yellow(), .cyan(), .magenta(), .white(), .gray()
+ *   - Custom hex: .hex("#FF5733") or .hex("FF5733")
+ *   - Custom RGB: .rgb(255, 87, 51)
+ *   - Modifiers: .bold(), .italic(), .underline()
+ *   - Print once: .once() - prints only the first time (useful in loops)
+ *   - Chaining: echo::info("message").red().bold().italic().once()
+ *
  * Supports logging of:
  *   - Anything convertible to string (via operator<<)
  *   - Objects with pretty_print() method (preferred)
  *   - Objects with print() method
  */
 
+#include <cstdlib>
 #include <iostream>
 #include <mutex>
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <unordered_set>
 
 #ifdef ECHO_ENABLE_TIMESTAMP
 #include <chrono>
@@ -64,10 +96,15 @@ namespace echo {
     // Compile-time log level configuration
     // =================================================================================================
 
+// Accept both LOGLEVEL and ECHOLEVEL, with LOGLEVEL taking precedence
 #if defined(LOGLEVEL)
 #define ECHO_STRINGIFY(x) #x
 #define ECHO_TOSTRING(x) ECHO_STRINGIFY(x)
 #define ECHO_LOGLEVEL_STR ECHO_TOSTRING(LOGLEVEL)
+#elif defined(ECHOLEVEL)
+#define ECHO_STRINGIFY(x) #x
+#define ECHO_TOSTRING(x) ECHO_STRINGIFY(x)
+#define ECHO_LOGLEVEL_STR ECHO_TOSTRING(ECHOLEVEL)
 #endif
 
     namespace detail {
@@ -82,11 +119,30 @@ namespace echo {
         }
 
         // =================================================================================================
+        // Once tracking (for .once() functionality)
+        // =================================================================================================
+
+        inline std::unordered_set<std::string> &get_once_set() {
+            static std::unordered_set<std::string> once_set;
+            return once_set;
+        }
+
+        inline bool check_and_mark_once(const char *file, int line) {
+            std::string key = std::string(file) + ":" + std::to_string(line);
+            std::lock_guard<std::mutex> lock(get_log_mutex());
+            if (get_once_set().count(key)) {
+                return false; // Already printed
+            }
+            get_once_set().insert(key);
+            return true; // First time
+        }
+
+        // =================================================================================================
         // Log level parsing
         // =================================================================================================
 
         inline constexpr Level parse_level() {
-#if defined(LOGLEVEL)
+#if defined(LOGLEVEL) || defined(ECHOLEVEL)
             constexpr const char *level_str = ECHO_LOGLEVEL_STR;
             if (level_str[0] == 'T' || level_str[0] == 't')
                 return Level::Trace;
@@ -102,8 +158,11 @@ namespace echo {
                 return Level::Critical;
             if (level_str[0] == 'O' || level_str[0] == 'o')
                 return Level::Off;
+#else
+            // When no compile-time level is set, use Trace to allow runtime/env control
+            return Level::Trace;
 #endif
-            return Level::Info; // Default level
+            return Level::Info; // Fallback (should never reach here)
         }
 
         inline constexpr Level ACTIVE_LEVEL = parse_level();
@@ -112,8 +171,62 @@ namespace echo {
         // Runtime log level control
         // =================================================================================================
 
+        // Parse level from string (case-insensitive)
+        inline Level parse_level_from_string(const char *str) {
+            if (!str || str[0] == '\0')
+                return Level::Off;
+
+            char first = str[0];
+            // Convert to lowercase for comparison
+            if (first >= 'A' && first <= 'Z')
+                first = first + ('a' - 'A');
+
+            switch (first) {
+            case 't':
+                return Level::Trace;
+            case 'd':
+                return Level::Debug;
+            case 'i':
+                return Level::Info;
+            case 'w':
+                return Level::Warn;
+            case 'e':
+                return Level::Error;
+            case 'c':
+                return Level::Critical;
+            case 'o':
+                return Level::Off;
+            default:
+                return Level::Off;
+            }
+        }
+
+        // Initialize runtime level from environment variable
+        // Only used when no compile-time level is set
+        inline Level init_runtime_level() {
+#if !defined(LOGLEVEL) && !defined(ECHOLEVEL)
+            // Only check environment variables if no compile-time level was set
+            const char *env_level = std::getenv("LOGLEVEL");
+            if (!env_level) {
+                env_level = std::getenv("ECHOLEVEL");
+            }
+
+            if (env_level) {
+                Level parsed = parse_level_from_string(env_level);
+                if (parsed != Level::Off) {
+                    return parsed;
+                }
+            }
+            // Default to Info when no env var is set and no compile-time level
+            return Level::Info;
+#else
+            // When compile-time level is set, use Off to defer to ACTIVE_LEVEL
+            return Level::Off;
+#endif
+        }
+
         inline Level &get_runtime_level() {
-            static Level runtime_level = Level::Off; // Off means "use compile-time level"
+            static Level runtime_level = init_runtime_level();
             return runtime_level;
         }
 
@@ -177,15 +290,15 @@ namespace echo {
         inline const char *level_color(Level level) {
             switch (level) {
             case Level::Trace:
-                return "\033[90m"; // Gray
+                return "\033[90;1m"; // Bold Gray
             case Level::Debug:
-                return "\033[36m"; // Cyan
+                return "\033[36;1m"; // Bold Cyan
             case Level::Info:
-                return "\033[32m"; // Green
+                return "\033[32;1m"; // Bold Green
             case Level::Warn:
-                return "\033[33m"; // Yellow
+                return "\033[33;1m"; // Bold Yellow
             case Level::Error:
-                return "\033[31m"; // Red
+                return "\033[31;1m"; // Bold Red
             case Level::Critical:
                 return "\033[35;1m"; // Bold Magenta
             default:
@@ -265,20 +378,298 @@ namespace echo {
     } // namespace detail
 
     // =================================================================================================
+    // Fluent logging interface with color support
+    // =================================================================================================
+
+    /**
+     * @brief Proxy object for fluent logging with color methods
+     *
+     * Allows chaining like:
+     *   echo::info("message").red()
+     *   echo::info("message").hex("#FF5733")
+     *   echo::info("message").rgb(255, 87, 51)
+     *   echo::info("message").cyan().bold().italic()
+     */
+    template <Level L> class log_proxy {
+      private:
+        std::string message_;
+        std::string color_code_;
+        bool skip_print_ = false;
+
+      public:
+        template <typename... Args> log_proxy(const Args &...args) {
+            // Only build message if it will be printed (compile-time check)
+            if constexpr (static_cast<int>(L) >= static_cast<int>(detail::ACTIVE_LEVEL)) {
+                std::ostringstream oss;
+                detail::append_args(oss, args...);
+                message_ = oss.str();
+            }
+        }
+
+        // Color methods
+        log_proxy &red() {
+            color_code_ = "\033[31m";
+            return *this;
+        }
+        log_proxy &green() {
+            color_code_ = "\033[32m";
+            return *this;
+        }
+        log_proxy &yellow() {
+            color_code_ = "\033[33m";
+            return *this;
+        }
+        log_proxy &blue() {
+            color_code_ = "\033[34m";
+            return *this;
+        }
+        log_proxy &magenta() {
+            color_code_ = "\033[35m";
+            return *this;
+        }
+        log_proxy &cyan() {
+            color_code_ = "\033[36m";
+            return *this;
+        }
+        log_proxy &white() {
+            color_code_ = "\033[37m";
+            return *this;
+        }
+        log_proxy &gray() {
+            color_code_ = "\033[90m";
+            return *this;
+        }
+        log_proxy &bold() {
+            color_code_ += "\033[1m";
+            return *this;
+        }
+        log_proxy &italic() {
+            color_code_ += "\033[3m";
+            return *this;
+        }
+        log_proxy &underline() {
+            color_code_ += "\033[4m";
+            return *this;
+        }
+
+        // Custom hex color
+        log_proxy &hex(const std::string &hex_color) {
+// Use the color utilities from color.hpp if available
+#ifdef ECHO_COLOR_HPP
+            color_code_ = detail::rgb_to_ansi(detail::hex_to_rgb(hex_color));
+#else
+            // Fallback: parse hex manually
+            if (hex_color.length() >= 6) {
+                std::string h = hex_color;
+                if (h[0] == '#')
+                    h = h.substr(1);
+                if (h.length() == 6) {
+                    int r = std::stoi(h.substr(0, 2), nullptr, 16);
+                    int g = std::stoi(h.substr(2, 2), nullptr, 16);
+                    int b = std::stoi(h.substr(4, 2), nullptr, 16);
+                    color_code_ =
+                        "\033[38;2;" + std::to_string(r) + ";" + std::to_string(g) + ";" + std::to_string(b) + "m";
+                }
+            }
+#endif
+            return *this;
+        }
+
+        // Custom RGB color
+        log_proxy &rgb(int r, int g, int b) {
+            color_code_ = "\033[38;2;" + std::to_string(r) + ";" + std::to_string(g) + ";" + std::to_string(b) + "m";
+            return *this;
+        }
+
+        // Print only once (internal - use ONCE macro instead)
+        log_proxy &once_impl(const char *file, int line) {
+            std::string key = std::string(file) + ":" + std::to_string(line);
+            std::lock_guard<std::mutex> lock(detail::get_log_mutex());
+            static std::unordered_set<std::string> once_set;
+            if (once_set.count(key)) {
+                skip_print_ = true;
+            } else {
+                once_set.insert(key);
+            }
+            return *this;
+        }
+
+        // Destructor performs the actual logging
+        ~log_proxy() {
+            // Check if we should skip printing (e.g., from .once())
+            if (skip_print_) {
+                return;
+            }
+
+            if constexpr (static_cast<int>(L) >= static_cast<int>(detail::ACTIVE_LEVEL)) {
+                // Runtime level check
+                if (static_cast<int>(L) < static_cast<int>(detail::get_effective_level())) {
+                    return;
+                }
+
+                std::lock_guard<std::mutex> lock(detail::get_log_mutex());
+                std::ostream &out = (L >= Level::Error) ? std::cerr : std::cout;
+#ifdef ECHO_ENABLE_TIMESTAMP
+                out << "[" << detail::get_timestamp() << "]";
+#endif
+                out << detail::level_color(L) << "[" << detail::level_name(L) << "]" << detail::RESET << " ";
+
+                if (!color_code_.empty()) {
+                    out << color_code_ << message_ << detail::RESET << "\n";
+                } else {
+                    out << message_ << "\n";
+                }
+            }
+        }
+    };
+
+    // =================================================================================================
+    // Simple print proxy (no log level, always prints)
+    // =================================================================================================
+
+    /**
+     * @brief Proxy object for simple printing without log levels
+     *
+     * Allows: echo("message").red()
+     */
+    class print_proxy {
+      private:
+        std::string message_;
+        std::string color_code_;
+        bool skip_print_ = false;
+
+      public:
+        template <typename... Args> print_proxy(const Args &...args) {
+            std::ostringstream oss;
+            detail::append_args(oss, args...);
+            message_ = oss.str();
+        }
+
+        // Color methods
+        print_proxy &red() {
+            color_code_ = "\033[31m";
+            return *this;
+        }
+        print_proxy &green() {
+            color_code_ = "\033[32m";
+            return *this;
+        }
+        print_proxy &yellow() {
+            color_code_ = "\033[33m";
+            return *this;
+        }
+        print_proxy &blue() {
+            color_code_ = "\033[34m";
+            return *this;
+        }
+        print_proxy &magenta() {
+            color_code_ = "\033[35m";
+            return *this;
+        }
+        print_proxy &cyan() {
+            color_code_ = "\033[36m";
+            return *this;
+        }
+        print_proxy &white() {
+            color_code_ = "\033[37m";
+            return *this;
+        }
+        print_proxy &gray() {
+            color_code_ = "\033[90m";
+            return *this;
+        }
+        print_proxy &bold() {
+            color_code_ += "\033[1m";
+            return *this;
+        }
+        print_proxy &italic() {
+            color_code_ += "\033[3m";
+            return *this;
+        }
+        print_proxy &underline() {
+            color_code_ += "\033[4m";
+            return *this;
+        }
+
+        // Custom hex color
+        print_proxy &hex(const std::string &hex_color) {
+            if (hex_color.length() >= 6) {
+                std::string h = hex_color;
+                if (h[0] == '#')
+                    h = h.substr(1);
+                if (h.length() == 6) {
+                    int r = std::stoi(h.substr(0, 2), nullptr, 16);
+                    int g = std::stoi(h.substr(2, 2), nullptr, 16);
+                    int b = std::stoi(h.substr(4, 2), nullptr, 16);
+                    color_code_ =
+                        "\033[38;2;" + std::to_string(r) + ";" + std::to_string(g) + ";" + std::to_string(b) + "m";
+                }
+            }
+            return *this;
+        }
+
+        // Custom RGB color
+        print_proxy &rgb(int r, int g, int b) {
+            color_code_ = "\033[38;2;" + std::to_string(r) + ";" + std::to_string(g) + ";" + std::to_string(b) + "m";
+            return *this;
+        }
+
+        // Print only once (internal - use ONCE macro instead)
+        print_proxy &once_impl(const char *file, int line) {
+            std::string key = std::string(file) + ":" + std::to_string(line);
+            std::lock_guard<std::mutex> lock(detail::get_log_mutex());
+            static std::unordered_set<std::string> once_set;
+            if (once_set.count(key)) {
+                skip_print_ = true;
+            } else {
+                once_set.insert(key);
+            }
+            return *this;
+        }
+
+        // Destructor performs the actual printing
+        ~print_proxy() {
+            // Check if we should skip printing (e.g., from .once())
+            if (skip_print_) {
+                return;
+            }
+
+            std::lock_guard<std::mutex> lock(detail::get_log_mutex());
+            if (!color_code_.empty()) {
+                std::cout << color_code_ << message_ << detail::RESET << "\n";
+            } else {
+                std::cout << message_ << "\n";
+            }
+        }
+    };
+
+    // =================================================================================================
     // Public logging functions
     // =================================================================================================
 
-    template <typename... Args> inline void trace(const Args &...args) { detail::log<Level::Trace>(args...); }
+    template <typename... Args> inline log_proxy<Level::Trace> trace(const Args &...args) {
+        return log_proxy<Level::Trace>(args...);
+    }
 
-    template <typename... Args> inline void debug(const Args &...args) { detail::log<Level::Debug>(args...); }
+    template <typename... Args> inline log_proxy<Level::Debug> debug(const Args &...args) {
+        return log_proxy<Level::Debug>(args...);
+    }
 
-    template <typename... Args> inline void info(const Args &...args) { detail::log<Level::Info>(args...); }
+    template <typename... Args> inline log_proxy<Level::Info> info(const Args &...args) {
+        return log_proxy<Level::Info>(args...);
+    }
 
-    template <typename... Args> inline void warn(const Args &...args) { detail::log<Level::Warn>(args...); }
+    template <typename... Args> inline log_proxy<Level::Warn> warn(const Args &...args) {
+        return log_proxy<Level::Warn>(args...);
+    }
 
-    template <typename... Args> inline void error(const Args &...args) { detail::log<Level::Error>(args...); }
+    template <typename... Args> inline log_proxy<Level::Error> error(const Args &...args) {
+        return log_proxy<Level::Error>(args...);
+    }
 
-    template <typename... Args> inline void critical(const Args &...args) { detail::log<Level::Critical>(args...); }
+    template <typename... Args> inline log_proxy<Level::Critical> critical(const Args &...args) {
+        return log_proxy<Level::Critical>(args...);
+    }
 
     // =================================================================================================
     // Utility: Get/check current log level
@@ -323,5 +714,42 @@ namespace echo {
         detail::append_kv(oss, args...);
         return oss.str();
     }
+    // =================================================================================================
+    // Simple echo function (inside namespace)
+    // =================================================================================================
+
+    /**
+     * @brief Simple print function without log levels
+     *
+     * Usage (inside namespace): echo("message").red()
+     * Usage (global): ::echo("message").red()
+     */
+    template <typename... Args> inline print_proxy print(const Args &...args) { return print_proxy(args...); }
 
 } // namespace echo
+
+// =================================================================================================
+// Global echo() macro (can be used without namespace prefix)
+// =================================================================================================
+
+/**
+ * @brief Simple print function without log levels (global scope)
+ *
+ * Usage: echo("message").red()
+ *
+ * This allows using echo() without the echo:: prefix while still having
+ * access to echo::info(), echo::debug(), etc.
+ */
+#define echo(...) echo::print_proxy(__VA_ARGS__)
+
+// =================================================================================================
+// .once() macro helper (captures call site location)
+// =================================================================================================
+
+/**
+ * @brief Helper macro for .once() that captures file and line
+ *
+ * This is a workaround because we can't get __FILE__ and __LINE__ inside a method.
+ * The macro intercepts the call and injects the location information.
+ */
+#define once() once_impl(__FILE__, __LINE__)
