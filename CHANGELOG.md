@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.11] - 2026-01-04
+
+### <!-- 0 -->⛰️  Features
+
+- Add always-on `echo` function
+
 ## [0.0.10] - 2026-01-03
 
 ### <!-- 0 -->⛰️  Features
