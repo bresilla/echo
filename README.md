@@ -74,44 +74,163 @@ target_link_libraries(your_target echo::echo)
 
 ## Core Logging
 
-### Log Levels
+### Simple Echo (No Log Levels)
+
+Print without log level filtering - always shows, no `[level]` prefix:
 
 ```cpp
-echo::trace("Detailed trace information");
-echo::debug("Debug information");
-echo::info("General information");
-echo::warn("Warning message");
-echo::error("Error occurred");
-echo::critical("Critical failure!");
+echo("Simple message");
+echo("Colored text").red();
+echo("Custom color").hex("#FF5733");
+echo("RGB color").rgb(255, 165, 0);
+echo("Bold and italic").bold().italic();
 ```
+
+### Log Levels
+
+Logging with levels - shows `[level]` prefix (bold by default), respects log level filtering:
+
+```cpp
+echo::trace("Detailed trace information");    // Level 0 - Most verbose
+echo::debug("Debug information");              // Level 1
+echo::info("General information");             // Level 2 - Default
+echo::warn("Warning message");                 // Level 3
+echo::error("Error occurred");                 // Level 4
+echo::critical("Critical failure!");           // Level 5 - Least verbose
+```
+
+**All level labels are bold by default for better visibility!**
 
 ### Multiple Arguments
 
 ```cpp
 echo::info("User: ", username, " logged in at ", timestamp);
 echo::debug("Position: x=", x, " y=", y, " z=", z);
+echo("Simple: ", value1, " and ", value2);
 ```
 
-### Compile-Time Control
+### Fluent Interface with Colors
 
-Zero overhead for disabled log levels:
+Chain colors and text modifiers on any log statement:
 
 ```cpp
-#define LOGLEVEL Debug
+// Named colors
+echo::info("Red text").red();
+echo::warn("Green warning").green();
+echo::error("Blue error").blue();
+
+// Available colors: .red(), .green(), .blue(), .yellow(), .cyan(), 
+//                   .magenta(), .white(), .gray()
+
+// Custom HEX colors
+echo::info("Custom color").hex("#FF1493");
+echo::warn("Another color").hex("00FFFF");  // # is optional
+
+// Custom RGB colors
+echo::info("RGB color").rgb(255, 87, 51);
+echo::error("Another RGB").rgb(0, 255, 128);
+
+// Text modifiers
+echo::info("Bold text").bold();
+echo::info("Italic text").italic();
+echo::info("Underlined text").underline();
+
+// Chain everything together!
+echo::info("All combined").red().bold().italic().underline();
+echo::warn("Custom styled").hex("#FF00FF").bold();
+echo("Simple echo styled").cyan().italic();
+```
+
+### Print Once (Loop-Safe Logging)
+
+Print a message only once, even in loops - perfect for avoiding log spam:
+
+```cpp
+// Prints only on first iteration
+for (int i = 0; i < 1000; i++) {
+    echo::info("Loop started").once();
+    echo::warn("Warning in loop").red().once();
+}
+
+// Each unique location prints once
+for (int i = 0; i < 100; i++) {
+    echo::info("First message").once();   // Prints once
+    echo::warn("Second message").once();  // Also prints once
+}
+
+// Works with all features
+for (int i = 0; i < 1000; i++) {
+    echo::error("Styled once").hex("#FF0000").bold().once();
+    echo("Simple once").cyan().once();
+}
+```
+
+**How it works:** `.once()` uses `__FILE__` and `__LINE__` to track unique code locations. Each call site prints only once, ever.
+
+### Log Level Control
+
+**Priority order (highest to lowest):**
+1. Runtime API: `echo::set_level(echo::Level::Debug)`
+2. Environment variable: `LOGLEVEL=Debug` or `ECHOLEVEL=Trace`
+3. In-file define: `#define LOGLEVEL Debug`
+4. Build system: `-DLOGLEVEL=Error`
+
+#### Compile-Time Control (Zero Overhead!)
+
+When you set a compile-time level, filtered logs are **completely removed** from the binary:
+
+```cpp
+#define LOGLEVEL Error  // or ECHOLEVEL Error
 #include <echo/echo.hpp>
 
-echo::trace("This is compiled out!");  // No runtime cost
-echo::debug("This appears");
+echo::trace("Removed from binary!");  // 0 ns overhead - doesn't exist!
+echo::debug("Removed from binary!");  // 0 ns overhead - doesn't exist!
+echo::info("Removed from binary!");   // 0 ns overhead - doesn't exist!
+echo::warn("Removed from binary!");   // 0 ns overhead - doesn't exist!
+echo::error("This exists");           // Only this code exists in binary
 ```
+
+**Build system:**
+```bash
+# Makefile
+make build LOGLEVEL=Error
+make build ECHOLEVEL=Debug
+
+# CMake
+cmake -DLOGLEVEL=Error ..
+cmake -DECHOLEVEL=Debug ..
+
+# Direct compilation
+g++ -DLOGLEVEL=Error myapp.cpp
+```
+
+**Both LOGLEVEL and ECHOLEVEL are supported. LOGLEVEL takes precedence if both are set.**
 
 Available levels: `Trace`, `Debug`, `Info`, `Warn`, `Error`, `Critical`, `Off`
 
-### Runtime Control
+#### Environment Variable Control
+
+When **no** compile-time level is set, you can use environment variables:
+
+```bash
+# Set log level via environment
+LOGLEVEL=Debug ./myapp
+ECHOLEVEL=Trace ./myapp
+
+# LOGLEVEL takes precedence
+LOGLEVEL=Error ECHOLEVEL=Debug ./myapp  # Uses Error
+```
+
+**Note:** Environment variables are ignored if a compile-time level is set (to preserve zero-overhead optimization).
+
+#### Runtime Control
 
 ```cpp
 echo::set_level(echo::Level::Warn);
 echo::info("Hidden");
 echo::error("Visible");
+
+auto current = echo::get_level();
 ```
 
 ### Timestamps
