@@ -269,15 +269,15 @@ namespace echo {
         inline const char *level_color(Level level) {
             switch (level) {
             case Level::Trace:
-                return "\033[90m"; // Gray
+                return "\033[90;1m"; // Bold Gray
             case Level::Debug:
-                return "\033[36m"; // Cyan
+                return "\033[36;1m"; // Bold Cyan
             case Level::Info:
-                return "\033[32m"; // Green
+                return "\033[32;1m"; // Bold Green
             case Level::Warn:
-                return "\033[33m"; // Yellow
+                return "\033[33;1m"; // Bold Yellow
             case Level::Error:
-                return "\033[31m"; // Red
+                return "\033[31;1m"; // Bold Red
             case Level::Critical:
                 return "\033[35;1m"; // Bold Magenta
             default:
