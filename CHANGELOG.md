@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.0.17] - 2026-01-04
+
+### <!-- 0 -->⛰️  Features
+
+- Improve color accuracy with 24-bit RGB
+- Add format::String integration for widgets and demo
+- Implement advanced string formatting utility
+- Add comprehensive color manipulation utilities
+
 ## [0.0.16] - 2026-01-04
 
 ### <!-- 0 -->⛰️  Features

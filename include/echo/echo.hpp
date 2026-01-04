@@ -291,17 +291,17 @@ namespace echo {
         inline const char *level_color(Level level) {
             switch (level) {
             case Level::Trace:
-                return "\033[90;1m"; // Bold Gray
+                return "\033[38;2;128;128;128m\033[1m"; // Bold Gray (RGB: 128,128,128)
             case Level::Debug:
-                return "\033[36;1m"; // Bold Cyan
+                return "\033[38;2;0;255;255m\033[1m"; // Bold Cyan (RGB: 0,255,255)
             case Level::Info:
-                return "\033[32;1m"; // Bold Green
+                return "\033[38;2;0;255;0m\033[1m"; // Bold Green (RGB: 0,255,0)
             case Level::Warn:
-                return "\033[33;1m"; // Bold Yellow
+                return "\033[38;2;255;255;0m\033[1m"; // Bold Yellow (RGB: 255,255,0)
             case Level::Error:
-                return "\033[31;1m"; // Bold Red
+                return "\033[38;2;255;0;0m\033[1m"; // Bold Red (RGB: 255,0,0)
             case Level::Critical:
-                return "\033[35;1m"; // Bold Magenta
+                return "\033[38;2;255;0;255m\033[1m"; // Bold Magenta (RGB: 255,0,255)
             default:
                 return "\033[0m";
             }
@@ -408,37 +408,37 @@ namespace echo {
             }
         }
 
-        // Color methods
+        // Color methods (24-bit RGB)
         log_proxy &red() {
-            color_code_ = "\033[31m";
+            color_code_ = "\033[38;2;255;0;0m";
             return *this;
         }
         log_proxy &green() {
-            color_code_ = "\033[32m";
+            color_code_ = "\033[38;2;0;255;0m";
             return *this;
         }
         log_proxy &yellow() {
-            color_code_ = "\033[33m";
+            color_code_ = "\033[38;2;255;255;0m";
             return *this;
         }
         log_proxy &blue() {
-            color_code_ = "\033[34m";
+            color_code_ = "\033[38;2;0;0;255m";
             return *this;
         }
         log_proxy &magenta() {
-            color_code_ = "\033[35m";
+            color_code_ = "\033[38;2;255;0;255m";
             return *this;
         }
         log_proxy &cyan() {
-            color_code_ = "\033[36m";
+            color_code_ = "\033[38;2;0;255;255m";
             return *this;
         }
         log_proxy &white() {
-            color_code_ = "\033[37m";
+            color_code_ = "\033[38;2;255;255;255m";
             return *this;
         }
         log_proxy &gray() {
-            color_code_ = "\033[90m";
+            color_code_ = "\033[38;2;128;128;128m";
             return *this;
         }
         log_proxy &bold() {
@@ -566,37 +566,37 @@ namespace echo {
             message_ = oss.str();
         }
 
-        // Color methods
+        // Color methods (24-bit RGB)
         print_proxy &red() {
-            color_code_ = "\033[31m";
+            color_code_ = "\033[38;2;255;0;0m";
             return *this;
         }
         print_proxy &green() {
-            color_code_ = "\033[32m";
+            color_code_ = "\033[38;2;0;255;0m";
             return *this;
         }
         print_proxy &yellow() {
-            color_code_ = "\033[33m";
+            color_code_ = "\033[38;2;255;255;0m";
             return *this;
         }
         print_proxy &blue() {
-            color_code_ = "\033[34m";
+            color_code_ = "\033[38;2;0;0;255m";
             return *this;
         }
         print_proxy &magenta() {
-            color_code_ = "\033[35m";
+            color_code_ = "\033[38;2;255;0;255m";
             return *this;
         }
         print_proxy &cyan() {
-            color_code_ = "\033[36m";
+            color_code_ = "\033[38;2;0;255;255m";
             return *this;
         }
         print_proxy &white() {
-            color_code_ = "\033[37m";
+            color_code_ = "\033[38;2;255;255;255m";
             return *this;
         }
         print_proxy &gray() {
-            color_code_ = "\033[90m";
+            color_code_ = "\033[38;2;128;128;128m";
             return *this;
         }
         print_proxy &bold() {
