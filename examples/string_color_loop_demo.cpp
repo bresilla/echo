@@ -14,11 +14,11 @@
 using echo::format::String;
 
 int main() {
-    echo::info("╔════════════════════════════════════════╗");
-    echo::info("║   String Color Animation Demo         ║");
-    echo::info("╚════════════════════════════════════════╝\n");
+    echo("╔════════════════════════════════════════╗");
+    echo("║   String Color Animation Demo         ║");
+    echo("╚════════════════════════════════════════╝\n");
 
-    echo::info("Watch the color transition from green to red background:\n");
+    echo("Watch the color transition from green to red background:\n");
 
     // Animate color transition from green to red background
     for (int i = 0; i <= 100; i += 2) {
@@ -30,16 +30,16 @@ int main() {
         String status = String("Processing... " + std::to_string(i) + "%").bg(red, green, 0).white().bold();
 
         // Use inplace to update the same line
-        echo::info(status).inplace();
+        echo(status).inplace();
 
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
     std::cout << "\n\n";
-    echo::info("Color transition complete!\n");
+    echo("Color transition complete!\n");
 
     // Another example: Pulsing effect
-    echo::info("Pulsing color effect:\n");
+    echo("Pulsing color effect:\n");
 
     for (int cycle = 0; cycle < 3; ++cycle) {
         for (int i = 0; i <= 100; i += 5) {
@@ -49,7 +49,7 @@ int main() {
 
             String pulse = String("● PULSE ●").fg(magenta_amount, 0, cyan_amount).bold().center(20);
 
-            echo::info(pulse).inplace();
+            echo(pulse).inplace();
             std::this_thread::sleep_for(std::chrono::milliseconds(30));
         }
 
@@ -59,7 +59,7 @@ int main() {
 
             String pulse = String("● PULSE ●").fg(magenta_amount, 0, cyan_amount).bold().center(20);
 
-            echo::info(pulse).inplace();
+            echo(pulse).inplace();
             std::this_thread::sleep_for(std::chrono::milliseconds(30));
         }
     }
@@ -67,7 +67,7 @@ int main() {
     std::cout << "\n\n";
 
     // Example: Rainbow text
-    echo::info("Rainbow text effect:\n");
+    echo("Rainbow text effect:\n");
 
     const std::string text = "RAINBOW COLORS";
     for (int offset = 0; offset < 360; offset += 10) {
@@ -108,14 +108,14 @@ int main() {
             colored_text += char_str.to_string();
         }
 
-        echo::info(colored_text).inplace();
+        echo(colored_text).inplace();
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
     std::cout << "\n\n";
 
     // Example: Status indicators with different colors
-    echo::info("Status indicator simulation:\n");
+    echo("Status indicator simulation:\n");
 
     std::vector<std::string> statuses = {"IDLE", "STARTING", "RUNNING", "WARNING", "ERROR", "CRITICAL", "STOPPED"};
 
@@ -138,14 +138,14 @@ int main() {
             indicator = String("[" + status + "]").fg("#FF0000").dim();
         }
 
-        echo::info("System Status: ", indicator);
+        echo("System Status: ", indicator);
         std::this_thread::sleep_for(std::chrono::milliseconds(800));
     }
 
     std::cout << "\n\n";
 
     // Example: Progress bar with color gradient
-    echo::info("Progress bar with color gradient:\n");
+    echo("Progress bar with color gradient:\n");
 
     for (int progress = 0; progress <= 100; progress += 2) {
         // Color gradient from red -> yellow -> green
@@ -160,12 +160,12 @@ int main() {
 
         String bar = String("").progress(progress).fg(r, g, 0).bold();
 
-        echo::info("Loading: ", bar).inplace();
+        echo("Loading: ", bar).inplace();
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
     std::cout << "\n\n";
-    echo::info("Demo complete!");
+    echo("Demo complete!");
 
     return 0;
 }
