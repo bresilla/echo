@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.13] - 2026-01-04
+
+### <!-- 7 -->⚙️ Miscellaneous Tasks
+
+- Make log level colors bold
+
 ## [0.0.12] - 2026-01-04
 
 ### <!-- 1 -->🐛 Bug Fixes
