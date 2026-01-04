@@ -6,6 +6,13 @@
  *
  * Usage:
  *   #include <echo/echo.hpp>
+ *
+ *   // Simple printing (no log levels, always shows, no prefix)
+ *   echo::echo("Hello, world!");
+ *   echo::echo("Colored text").red();
+ *   echo::echo("Custom color").hex("#FF5733").bold();
+ *
+ *   // Logging with levels (shows [level] prefix, respects log level filtering)
  *   echo::info("Hello, world!");
  *   echo::debug("Value: ", 42);
  *   echo::info("Colored message").red();
@@ -474,6 +481,107 @@ namespace echo {
     };
 
     // =================================================================================================
+    // Simple print proxy (no log level, always prints)
+    // =================================================================================================
+
+    /**
+     * @brief Proxy object for simple printing without log levels
+     *
+     * Allows: echo("message").red()
+     */
+    class print_proxy {
+      private:
+        std::string message_;
+        std::string color_code_;
+
+      public:
+        template <typename... Args> print_proxy(const Args &...args) {
+            std::ostringstream oss;
+            detail::append_args(oss, args...);
+            message_ = oss.str();
+        }
+
+        // Color methods
+        print_proxy &red() {
+            color_code_ = "\033[31m";
+            return *this;
+        }
+        print_proxy &green() {
+            color_code_ = "\033[32m";
+            return *this;
+        }
+        print_proxy &yellow() {
+            color_code_ = "\033[33m";
+            return *this;
+        }
+        print_proxy &blue() {
+            color_code_ = "\033[34m";
+            return *this;
+        }
+        print_proxy &magenta() {
+            color_code_ = "\033[35m";
+            return *this;
+        }
+        print_proxy &cyan() {
+            color_code_ = "\033[36m";
+            return *this;
+        }
+        print_proxy &white() {
+            color_code_ = "\033[37m";
+            return *this;
+        }
+        print_proxy &gray() {
+            color_code_ = "\033[90m";
+            return *this;
+        }
+        print_proxy &bold() {
+            color_code_ += "\033[1m";
+            return *this;
+        }
+        print_proxy &italic() {
+            color_code_ += "\033[3m";
+            return *this;
+        }
+        print_proxy &underline() {
+            color_code_ += "\033[4m";
+            return *this;
+        }
+
+        // Custom hex color
+        print_proxy &hex(const std::string &hex_color) {
+            if (hex_color.length() >= 6) {
+                std::string h = hex_color;
+                if (h[0] == '#')
+                    h = h.substr(1);
+                if (h.length() == 6) {
+                    int r = std::stoi(h.substr(0, 2), nullptr, 16);
+                    int g = std::stoi(h.substr(2, 2), nullptr, 16);
+                    int b = std::stoi(h.substr(4, 2), nullptr, 16);
+                    color_code_ =
+                        "\033[38;2;" + std::to_string(r) + ";" + std::to_string(g) + ";" + std::to_string(b) + "m";
+                }
+            }
+            return *this;
+        }
+
+        // Custom RGB color
+        print_proxy &rgb(int r, int g, int b) {
+            color_code_ = "\033[38;2;" + std::to_string(r) + ";" + std::to_string(g) + ";" + std::to_string(b) + "m";
+            return *this;
+        }
+
+        // Destructor performs the actual printing
+        ~print_proxy() {
+            std::lock_guard<std::mutex> lock(detail::get_log_mutex());
+            if (!color_code_.empty()) {
+                std::cout << color_code_ << message_ << detail::RESET << "\n";
+            } else {
+                std::cout << message_ << "\n";
+            }
+        }
+    };
+
+    // =================================================================================================
     // Public logging functions
     // =================================================================================================
 
@@ -544,5 +652,16 @@ namespace echo {
         detail::append_kv(oss, args...);
         return oss.str();
     }
+
+    // =================================================================================================
+    // Simple echo function (no namespace prefix needed)
+    // =================================================================================================
+
+    /**
+     * @brief Simple print function without log levels
+     *
+     * Usage: echo("message").red()
+     */
+    template <typename... Args> inline print_proxy echo(const Args &...args) { return print_proxy(args...); }
 
 } // namespace echo
