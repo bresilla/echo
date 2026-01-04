@@ -138,7 +138,7 @@ int main() {
             indicator = String("[" + status + "]").fg("#FF0000").dim();
         }
 
-        echo("System Status: ", indicator);
+        echo("System Status: ", indicator).inplace();
         std::this_thread::sleep_for(std::chrono::milliseconds(800));
     }
 
