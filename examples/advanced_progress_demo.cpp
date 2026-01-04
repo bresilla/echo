@@ -3,8 +3,7 @@
  * @brief Demonstrates advanced progress bar features including styles, themes, and formatting
  */
 
-#include <echo/banner.hpp>
-#include <echo/wait.hpp>
+#include <echo/widget.hpp>
 
 #include <chrono>
 #include <thread>

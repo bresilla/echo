@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
 #define LOGLEVEL Trace
-#include <echo/wait.hpp>
+#include <echo/widget.hpp>
 
 #include <sstream>
 #include <string>

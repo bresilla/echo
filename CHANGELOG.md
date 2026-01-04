@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.16] - 2026-01-04
+
+### <!-- 0 -->⛰️  Features
+
+- Merge `wait.hpp` into `widget.hpp`
+- Introduce `.inplace()` for dynamic line updates
+
 ## [0.0.14] - 2026-01-04
 
 ### <!-- 0 -->⛰️  Features
