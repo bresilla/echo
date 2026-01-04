@@ -62,7 +62,8 @@
  *   - Custom hex: .hex("#FF5733") or .hex("FF5733")
  *   - Custom RGB: .rgb(255, 87, 51)
  *   - Modifiers: .bold(), .italic(), .underline()
- *   - Chaining: echo::info("message").red().bold().italic()
+ *   - Print once: .once() - prints only the first time (useful in loops)
+ *   - Chaining: echo::info("message").red().bold().italic().once()
  *
  * Supports logging of:
  *   - Anything convertible to string (via operator<<)
@@ -76,6 +77,7 @@
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <unordered_set>
 
 #ifdef ECHO_ENABLE_TIMESTAMP
 #include <chrono>
@@ -114,6 +116,25 @@ namespace echo {
         inline std::mutex &get_log_mutex() {
             static std::mutex log_mutex;
             return log_mutex;
+        }
+
+        // =================================================================================================
+        // Once tracking (for .once() functionality)
+        // =================================================================================================
+
+        inline std::unordered_set<std::string> &get_once_set() {
+            static std::unordered_set<std::string> once_set;
+            return once_set;
+        }
+
+        inline bool check_and_mark_once(const char *file, int line) {
+            std::string key = std::string(file) + ":" + std::to_string(line);
+            std::lock_guard<std::mutex> lock(get_log_mutex());
+            if (get_once_set().count(key)) {
+                return false; // Already printed
+            }
+            get_once_set().insert(key);
+            return true; // First time
         }
 
         // =================================================================================================
@@ -373,12 +394,16 @@ namespace echo {
       private:
         std::string message_;
         std::string color_code_;
+        bool skip_print_ = false;
 
       public:
         template <typename... Args> log_proxy(const Args &...args) {
-            std::ostringstream oss;
-            detail::append_args(oss, args...);
-            message_ = oss.str();
+            // Only build message if it will be printed (compile-time check)
+            if constexpr (static_cast<int>(L) >= static_cast<int>(detail::ACTIVE_LEVEL)) {
+                std::ostringstream oss;
+                detail::append_args(oss, args...);
+                message_ = oss.str();
+            }
         }
 
         // Color methods
@@ -456,8 +481,26 @@ namespace echo {
             return *this;
         }
 
+        // Print only once (internal - use ONCE macro instead)
+        log_proxy &once_impl(const char *file, int line) {
+            std::string key = std::string(file) + ":" + std::to_string(line);
+            std::lock_guard<std::mutex> lock(detail::get_log_mutex());
+            static std::unordered_set<std::string> once_set;
+            if (once_set.count(key)) {
+                skip_print_ = true;
+            } else {
+                once_set.insert(key);
+            }
+            return *this;
+        }
+
         // Destructor performs the actual logging
         ~log_proxy() {
+            // Check if we should skip printing (e.g., from .once())
+            if (skip_print_) {
+                return;
+            }
+
             if constexpr (static_cast<int>(L) >= static_cast<int>(detail::ACTIVE_LEVEL)) {
                 // Runtime level check
                 if (static_cast<int>(L) < static_cast<int>(detail::get_effective_level())) {
@@ -493,6 +536,7 @@ namespace echo {
       private:
         std::string message_;
         std::string color_code_;
+        bool skip_print_ = false;
 
       public:
         template <typename... Args> print_proxy(const Args &...args) {
@@ -570,8 +614,26 @@ namespace echo {
             return *this;
         }
 
+        // Print only once (internal - use ONCE macro instead)
+        print_proxy &once_impl(const char *file, int line) {
+            std::string key = std::string(file) + ":" + std::to_string(line);
+            std::lock_guard<std::mutex> lock(detail::get_log_mutex());
+            static std::unordered_set<std::string> once_set;
+            if (once_set.count(key)) {
+                skip_print_ = true;
+            } else {
+                once_set.insert(key);
+            }
+            return *this;
+        }
+
         // Destructor performs the actual printing
         ~print_proxy() {
+            // Check if we should skip printing (e.g., from .once())
+            if (skip_print_) {
+                return;
+            }
+
             std::lock_guard<std::mutex> lock(detail::get_log_mutex());
             if (!color_code_.empty()) {
                 std::cout << color_code_ << message_ << detail::RESET << "\n";
@@ -679,3 +741,15 @@ namespace echo {
  * access to echo::info(), echo::debug(), etc.
  */
 #define echo(...) echo::print_proxy(__VA_ARGS__)
+
+// =================================================================================================
+// .once() macro helper (captures call site location)
+// =================================================================================================
+
+/**
+ * @brief Helper macro for .once() that captures file and line
+ *
+ * This is a workaround because we can't get __FILE__ and __LINE__ inside a method.
+ * The macro intercepts the call and injects the location information.
+ */
+#define once() once_impl(__FILE__, __LINE__)
