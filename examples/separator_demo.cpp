@@ -1,6 +1,6 @@
 // Demonstration of banner and separator functionality
 #define LOGLEVEL Trace
-#include <echo/banner.hpp>
+#include <echo/widget.hpp>
 
 int main() {
     // Large banner for application start

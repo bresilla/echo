@@ -3,8 +3,7 @@
  * @brief Demonstrates full-width progress bars (auto-sizing to terminal)
  */
 
-#include <echo/banner.hpp>
-#include <echo/wait.hpp>
+#include <echo/widget.hpp>
 
 #include <chrono>
 #include <thread>

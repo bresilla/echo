@@ -1,7 +1,6 @@
 // Demonstration of progress bars, spinners, and step indicators
 #define LOGLEVEL Trace
-#include <echo/banner.hpp>
-#include <echo/wait.hpp>
+#include <echo/widget.hpp>
 
 #include <chrono>
 #include <thread>

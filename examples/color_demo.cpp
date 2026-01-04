@@ -1,7 +1,6 @@
 // Demonstration of HEX color support in Echo
 #define LOGLEVEL Trace
-#include <echo/banner.hpp>
-#include <echo/wait.hpp>
+#include <echo/widget.hpp>
 
 #include <chrono>
 #include <thread>
