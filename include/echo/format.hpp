@@ -120,6 +120,16 @@ namespace echo {
             String(const String &other)
                 : text_(other.text_), fg_color_(other.fg_color_), bg_color_(other.bg_color_), styles_(other.styles_) {}
 
+            String &operator=(const String &other) {
+                if (this != &other) {
+                    text_ = other.text_;
+                    fg_color_ = other.fg_color_;
+                    bg_color_ = other.bg_color_;
+                    styles_ = other.styles_;
+                }
+                return *this;
+            }
+
             // =================================================================================================
             // Foreground Colors - Standard
             // =================================================================================================

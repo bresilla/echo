@@ -63,6 +63,7 @@
 
 #include <echo/color.hpp>
 #include <echo/echo.hpp>
+#include <echo/format.hpp>
 
 #include <chrono>
 #include <cstdio>
@@ -1587,5 +1588,295 @@ namespace echo {
 
         size_t get_total_steps() const { return step_names_.size(); }
     };
+
+    // =================================================================================================
+    // format::String Integration - Widget Functions
+    // =================================================================================================
+
+    /**
+     * @brief Create a separator as a format::String
+     * @param text Optional text to center in the separator
+     * @param sep_char Character to use for the separator
+     * @return Formatted String object
+     */
+    inline format::String make_separator(const std::string &text = "", char sep_char = '-') {
+        int width = detail::get_terminal_width();
+        std::string result;
+
+        if (text.empty()) {
+            result = std::string(width, sep_char);
+        } else {
+            int text_len = text.length() + 4;
+            if (text_len >= width) {
+                result = std::string(1, sep_char) + "[ " + text + " ]" + std::string(1, sep_char);
+            } else {
+                int total_sep = width - text_len;
+                int left_sep = total_sep / 2;
+                int right_sep = total_sep - left_sep;
+                result = std::string(left_sep, sep_char) + "[ " + text + " ]" + std::string(right_sep, sep_char);
+            }
+        }
+
+        return format::String(result);
+    }
+
+    /**
+     * @brief Create a box as a format::String
+     * @param text Text to display in the box
+     * @param style Box style
+     * @return Formatted String object
+     */
+    inline format::String make_box(const std::string &text, BoxStyle style = BoxStyle::Single) {
+        const char *top_left = "┌";
+        const char *top_right = "┐";
+        const char *bottom_left = "└";
+        const char *bottom_right = "┘";
+        const char *horizontal = "─";
+        const char *vertical = "│";
+
+        switch (style) {
+        case BoxStyle::Single:
+            top_left = "┌";
+            top_right = "┐";
+            bottom_left = "└";
+            bottom_right = "┘";
+            horizontal = "─";
+            vertical = "│";
+            break;
+        case BoxStyle::Double:
+            top_left = "╔";
+            top_right = "╗";
+            bottom_left = "╚";
+            bottom_right = "╝";
+            horizontal = "═";
+            vertical = "║";
+            break;
+        case BoxStyle::Rounded:
+            top_left = "╭";
+            top_right = "╮";
+            bottom_left = "╰";
+            bottom_right = "╯";
+            horizontal = "─";
+            vertical = "│";
+            break;
+        case BoxStyle::Heavy:
+            top_left = "┏";
+            top_right = "┓";
+            bottom_left = "┗";
+            bottom_right = "┛";
+            horizontal = "━";
+            vertical = "┃";
+            break;
+        case BoxStyle::Dashed:
+            top_left = "┏";
+            top_right = "┓";
+            bottom_left = "┗";
+            bottom_right = "┛";
+            horizontal = "╍";
+            vertical = "╏";
+            break;
+        case BoxStyle::ASCII:
+            top_left = "+";
+            top_right = "+";
+            bottom_left = "+";
+            bottom_right = "+";
+            horizontal = "-";
+            vertical = "|";
+            break;
+        }
+
+        int text_width = text.length();
+        int box_width = text_width + 2;
+
+        std::string result;
+        result += top_left;
+        for (int i = 0; i < box_width; ++i) {
+            result += horizontal;
+        }
+        result += top_right;
+        result += "\n";
+        result += std::string(vertical) + " " + text + " " + std::string(vertical);
+        result += "\n";
+        result += bottom_left;
+        for (int i = 0; i < box_width; ++i) {
+            result += horizontal;
+        }
+        result += bottom_right;
+
+        return format::String(result);
+    }
+
+    /**
+     * @brief Create a header as a format::String
+     * @param text Header text
+     * @return Formatted String object
+     */
+    inline format::String make_header(const std::string &text) {
+        int width = detail::get_terminal_width();
+        int text_len = text.length();
+        int padding = 2;
+        int content_width = width - 4;
+
+        if (text_len > content_width) {
+            content_width = text_len + padding;
+        }
+
+        int total_padding = content_width - text_len;
+        int left_pad = total_padding / 2;
+        int right_pad = total_padding - left_pad;
+
+        std::string result;
+        result += "╔";
+        for (int i = 0; i < content_width + padding; ++i) {
+            result += "═";
+        }
+        result += "╗\n";
+        result += "║ " + std::string(left_pad, ' ') + text + std::string(right_pad, ' ') + " ║\n";
+        result += "╚";
+        for (int i = 0; i < content_width + padding; ++i) {
+            result += "═";
+        }
+        result += "╝";
+
+        return format::String(result);
+    }
+
+    /**
+     * @brief Create a title as a format::String
+     * @param text Title text
+     * @param border_char Border character
+     * @return Formatted String object
+     */
+    inline format::String make_title(const std::string &text, char border_char = '=') {
+        int width = detail::get_terminal_width();
+        int text_len = text.length();
+
+        std::string result;
+        result += std::string(width, border_char) + "\n";
+
+        if (text_len >= width) {
+            result += text + "\n";
+        } else {
+            int total_padding = width - text_len;
+            int left_pad = total_padding / 2;
+            result += std::string(left_pad, ' ') + text + "\n";
+        }
+
+        result += std::string(width, border_char);
+
+        return format::String(result);
+    }
+
+    /**
+     * @brief Create a banner as a format::String
+     * @param text Banner text
+     * @param style Box style
+     * @return Formatted String object
+     */
+    inline format::String make_banner(const std::string &text, BoxStyle style = BoxStyle::Heavy) {
+        const char *top_left = "┏";
+        const char *top_right = "┓";
+        const char *bottom_left = "┗";
+        const char *bottom_right = "┛";
+        const char *horizontal = "━";
+        const char *vertical = "┃";
+
+        switch (style) {
+        case BoxStyle::Single:
+            top_left = "┌";
+            top_right = "┐";
+            bottom_left = "└";
+            bottom_right = "┘";
+            horizontal = "─";
+            vertical = "│";
+            break;
+        case BoxStyle::Double:
+            top_left = "╔";
+            top_right = "╗";
+            bottom_left = "╚";
+            bottom_right = "╝";
+            horizontal = "═";
+            vertical = "║";
+            break;
+        case BoxStyle::Rounded:
+            top_left = "╭";
+            top_right = "╮";
+            bottom_left = "╰";
+            bottom_right = "╯";
+            horizontal = "─";
+            vertical = "│";
+            break;
+        case BoxStyle::Heavy:
+            top_left = "┏";
+            top_right = "┓";
+            bottom_left = "┗";
+            bottom_right = "┛";
+            horizontal = "━";
+            vertical = "┃";
+            break;
+        case BoxStyle::Dashed:
+            top_left = "┏";
+            top_right = "┓";
+            bottom_left = "┗";
+            bottom_right = "┛";
+            horizontal = "╍";
+            vertical = "╏";
+            break;
+        case BoxStyle::ASCII:
+            top_left = "+";
+            top_right = "+";
+            bottom_left = "+";
+            bottom_right = "+";
+            horizontal = "-";
+            vertical = "|";
+            break;
+        }
+
+        int width = detail::get_terminal_width();
+        int text_len = text.length();
+        int content_width = width - 4;
+
+        if (text_len > content_width) {
+            content_width = text_len + 4;
+        }
+
+        int total_padding = content_width - text_len;
+        int left_pad = total_padding / 2;
+        int right_pad = total_padding - left_pad;
+
+        std::string result;
+        result += top_left;
+        for (int i = 0; i < content_width + 2; ++i) {
+            result += horizontal;
+        }
+        result += top_right;
+        result += "\n";
+
+        result += vertical;
+        for (int i = 0; i < content_width + 2; ++i) {
+            result += " ";
+        }
+        result += vertical;
+        result += "\n";
+
+        result += std::string(vertical) + " " + std::string(left_pad, ' ') + text + std::string(right_pad, ' ') + " " +
+                  std::string(vertical);
+        result += "\n";
+
+        result += vertical;
+        for (int i = 0; i < content_width + 2; ++i) {
+            result += " ";
+        }
+        result += vertical;
+        result += "\n";
+
+        result += bottom_left;
+        for (int i = 0; i < content_width + 2; ++i) {
+            result += horizontal;
+        }
+        result += bottom_right;
+
+        return format::String(result);
+    }
 
 } // namespace echo
