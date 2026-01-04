@@ -8,9 +8,9 @@
  *   #include <echo/echo.hpp>
  *
  *   // Simple printing (no log levels, always shows, no prefix)
- *   echo::echo("Hello, world!");
- *   echo::echo("Colored text").red();
- *   echo::echo("Custom color").hex("#FF5733").bold();
+ *   echo("Hello, world!");
+ *   echo("Colored text").red();
+ *   echo("Custom color").hex("#FF5733").bold();
  *
  *   // Logging with levels (shows [level] prefix, respects log level filtering)
  *   echo::info("Hello, world!");
@@ -652,16 +652,30 @@ namespace echo {
         detail::append_kv(oss, args...);
         return oss.str();
     }
-
     // =================================================================================================
-    // Simple echo function (no namespace prefix needed)
+    // Simple echo function (inside namespace)
     // =================================================================================================
 
     /**
      * @brief Simple print function without log levels
      *
-     * Usage: echo("message").red()
+     * Usage (inside namespace): echo("message").red()
+     * Usage (global): ::echo("message").red()
      */
-    template <typename... Args> inline print_proxy echo(const Args &...args) { return print_proxy(args...); }
+    template <typename... Args> inline print_proxy print(const Args &...args) { return print_proxy(args...); }
 
 } // namespace echo
+
+// =================================================================================================
+// Global echo() macro (can be used without namespace prefix)
+// =================================================================================================
+
+/**
+ * @brief Simple print function without log levels (global scope)
+ *
+ * Usage: echo("message").red()
+ *
+ * This allows using echo() without the echo:: prefix while still having
+ * access to echo::info(), echo::debug(), etc.
+ */
+#define echo(...) echo::print_proxy(__VA_ARGS__)
