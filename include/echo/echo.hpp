@@ -63,8 +63,10 @@
  *   - Custom RGB: .rgb(255, 87, 51)
  *   - Modifiers: .bold(), .italic(), .underline()
  *   - Print once: .once() - prints only the first time (useful in loops)
+ *   - Print every N ms: .every(1000) - rate-limits to at most once per interval
+ *   - Conditional print: .when(condition) - prints only if condition is true
  *   - Print in place: .inplace() - clears line and prints on same line (for updates)
- *   - Chaining: echo::info("message").red().bold().italic().once().inplace()
+ *   - Chaining: echo::info("message").red().bold().when(i % 10 == 0).every(500)
  *
  * Supports logging of:
  *   - Anything convertible to string (via operator<<)
@@ -72,16 +74,17 @@
  *   - Objects with print() method
  */
 
+#include <chrono>
 #include <cstdlib>
 #include <iostream>
 #include <mutex>
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 #include <unordered_set>
 
 #ifdef ECHO_ENABLE_TIMESTAMP
-#include <chrono>
 #include <iomanip>
 #endif
 
@@ -144,6 +147,39 @@ namespace echo {
             }
             get_once_set().insert(key);
             return true; // First time
+        }
+
+        // =================================================================================================
+        // Every tracking (for .every() functionality - time-based throttling)
+        // =================================================================================================
+
+        using time_point = std::chrono::steady_clock::time_point;
+
+        inline std::unordered_map<std::string, time_point> &get_every_map() {
+            static std::unordered_map<std::string, time_point> every_map;
+            return every_map;
+        }
+
+        inline bool check_every(const char *file, int line, int64_t interval_ms) {
+            std::string key = std::string(file) + ":" + std::to_string(line);
+            auto now = std::chrono::steady_clock::now();
+
+            std::lock_guard<std::mutex> lock(get_log_mutex());
+            auto &every_map = get_every_map();
+            auto it = every_map.find(key);
+
+            if (it == every_map.end()) {
+                every_map[key] = now;
+                return true; // First time, always print
+            }
+
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - it->second).count();
+            if (elapsed >= interval_ms) {
+                it->second = now;
+                return true; // Enough time has passed
+            }
+
+            return false; // Not enough time has passed
         }
 
         // =================================================================================================
@@ -509,6 +545,22 @@ namespace echo {
             return *this;
         }
 
+        // Print at most every N milliseconds (internal - use EVERY macro instead)
+        log_proxy &every_impl(const char *file, int line, int64_t interval_ms) {
+            if (!detail::check_every(file, line, interval_ms)) {
+                skip_print_ = true;
+            }
+            return *this;
+        }
+
+        // Conditional print - only prints if condition is true
+        log_proxy &when(bool condition) {
+            if (!condition) {
+                skip_print_ = true;
+            }
+            return *this;
+        }
+
         // Print in place (clear line and print on same line)
         log_proxy &inplace() {
             inplace_ = true;
@@ -667,6 +719,22 @@ namespace echo {
                 skip_print_ = true;
             } else {
                 once_set.insert(key);
+            }
+            return *this;
+        }
+
+        // Print at most every N milliseconds (internal - use EVERY macro instead)
+        print_proxy &every_impl(const char *file, int line, int64_t interval_ms) {
+            if (!detail::check_every(file, line, interval_ms)) {
+                skip_print_ = true;
+            }
+            return *this;
+        }
+
+        // Conditional print - only prints if condition is true
+        print_proxy &when(bool condition) {
+            if (!condition) {
+                skip_print_ = true;
             }
             return *this;
         }
@@ -844,3 +912,11 @@ namespace echo {
  * The macro intercepts the call and injects the location information.
  */
 #define once() once_impl(__FILE__, __LINE__)
+
+/**
+ * @brief Helper macro for .every(ms) that captures file and line
+ *
+ * Prints at most once every N milliseconds. Useful for rate-limiting logs in tight loops.
+ * Usage: echo::info("Status update").every(1000)  // prints at most once per second
+ */
+#define every(ms) every_impl(__FILE__, __LINE__, ms)

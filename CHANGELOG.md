@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.19] - 2026-01-05
+
+### <!-- 0 -->⛰️  Features
+
+- Add .every() and .when() logging modifiers
+
 ## [0.0.18] - 2026-01-04
 
 ### <!-- 0 -->⛰️  Features
