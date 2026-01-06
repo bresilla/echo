@@ -110,7 +110,7 @@ namespace echo::log {
             return level;
         }
 
-        inline Level get_effective_log_level() { return get_runtime_log_level(); }
+        [[nodiscard]] inline Level get_effective_log_level() noexcept { return get_runtime_log_level(); }
 
         // File state management
         struct FileState {
@@ -205,9 +205,10 @@ namespace echo::log {
 
         // =================================================================================================
         // Timestamp generation (always enabled for file logging)
+        // Uses thread_local buffer to avoid repeated allocations
         // =================================================================================================
 
-        inline std::string get_file_timestamp() {
+        [[nodiscard]] inline std::string get_file_timestamp() {
             auto now = std::chrono::system_clock::now();
             auto time_t_now = std::chrono::system_clock::to_time_t(now);
             auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
@@ -219,19 +220,14 @@ namespace echo::log {
             localtime_r(&time_t_now, &tm_buf);
 #endif
 
-            char buffer[32];
+            // Use thread_local buffer to avoid repeated allocations
+            thread_local char buffer[32];
             std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm_buf);
 
-            // Add milliseconds
-            std::string result = buffer;
-            result += ".";
-            if (ms.count() < 100)
-                result += "0";
-            if (ms.count() < 10)
-                result += "0";
-            result += std::to_string(ms.count());
-
-            return result;
+            // Add milliseconds efficiently
+            thread_local char result_buf[48];
+            int len = snprintf(result_buf, sizeof(result_buf), "%s.%03d", buffer, static_cast<int>(ms.count()));
+            return std::string(result_buf, len);
         }
 
         // =================================================================================================
@@ -357,7 +353,7 @@ namespace echo::log {
      * @brief Get current file log level
      * @return Current minimum log level
      */
-    inline Level get_level() { return detail::get_runtime_log_level(); }
+    [[nodiscard]] inline Level get_level() noexcept { return detail::get_runtime_log_level(); }
 
     /**
      * @brief Close the log file
@@ -375,13 +371,13 @@ namespace echo::log {
      * @brief Check if file logging is enabled
      * @return true if file logging is active
      */
-    inline bool is_enabled() { return detail::get_file_state().enabled; }
+    [[nodiscard]] inline bool is_enabled() noexcept { return detail::get_file_state().enabled; }
 
     /**
      * @brief Get current log file path
      * @return Path to the log file
      */
-    inline std::string get_file() { return detail::get_file_state().filename; }
+    [[nodiscard]] inline std::string get_file() { return detail::get_file_state().filename; }
 
     /**
      * @brief Flush the log file

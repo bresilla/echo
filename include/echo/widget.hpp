@@ -93,7 +93,46 @@ namespace echo {
         ASCII,   // +--+ | | +--+
     };
 
-    namespace detail {} // namespace detail
+    namespace detail {
+
+        /**
+         * @brief Box drawing characters for different styles
+         * Reduces code duplication across box, banner, header functions
+         */
+        struct BoxChars {
+            const char *top_left;
+            const char *top_right;
+            const char *bottom_left;
+            const char *bottom_right;
+            const char *horizontal;
+            const char *vertical;
+
+            /**
+             * @brief Get box characters for a given style
+             * @param style The box style
+             * @return BoxChars struct with appropriate characters
+             */
+            [[nodiscard]] static BoxChars get(BoxStyle style) noexcept {
+                switch (style) {
+                case BoxStyle::Single:
+                    return {"┌", "┐", "└", "┘", "─", "│"};
+                case BoxStyle::Double:
+                    return {"╔", "╗", "╚", "╝", "═", "║"};
+                case BoxStyle::Rounded:
+                    return {"╭", "╮", "╰", "╯", "─", "│"};
+                case BoxStyle::Heavy:
+                    return {"┏", "┓", "┗", "┛", "━", "┃"};
+                case BoxStyle::Dashed:
+                    return {"┏", "┓", "┗", "┛", "╍", "╏"};
+                case BoxStyle::ASCII:
+                    return {"+", "+", "+", "+", "-", "|"};
+                default:
+                    return {"┌", "┐", "└", "┘", "─", "│"};
+                }
+            }
+        };
+
+    } // namespace detail
 
     // =================================================================================================
     // Separator functions
@@ -232,85 +271,28 @@ namespace echo {
      *                                    // ╰──────╯
      */
     inline void box(const std::string &text, BoxStyle style = BoxStyle::Single) {
-        // Box drawing characters for each style (initialized to Single style as default)
-        const char *top_left = "┌";
-        const char *top_right = "┐";
-        const char *bottom_left = "└";
-        const char *bottom_right = "┘";
-        const char *horizontal = "─";
-        const char *vertical = "│";
-
-        switch (style) {
-        case BoxStyle::Single:
-            top_left = "┌";
-            top_right = "┐";
-            bottom_left = "└";
-            bottom_right = "┘";
-            horizontal = "─";
-            vertical = "│";
-            break;
-        case BoxStyle::Double:
-            top_left = "╔";
-            top_right = "╗";
-            bottom_left = "╚";
-            bottom_right = "╝";
-            horizontal = "═";
-            vertical = "║";
-            break;
-        case BoxStyle::Rounded:
-            top_left = "╭";
-            top_right = "╮";
-            bottom_left = "╰";
-            bottom_right = "╯";
-            horizontal = "─";
-            vertical = "│";
-            break;
-        case BoxStyle::Heavy:
-            top_left = "┏";
-            top_right = "┓";
-            bottom_left = "┗";
-            bottom_right = "┛";
-            horizontal = "━";
-            vertical = "┃";
-            break;
-        case BoxStyle::Dashed:
-            top_left = "┏";
-            top_right = "┓";
-            bottom_left = "┗";
-            bottom_right = "┛";
-            horizontal = "╍";
-            vertical = "╏";
-            break;
-        case BoxStyle::ASCII:
-            top_left = "+";
-            top_right = "+";
-            bottom_left = "+";
-            bottom_right = "+";
-            horizontal = "-";
-            vertical = "|";
-            break;
-        }
+        auto chars = detail::BoxChars::get(style);
 
         // Calculate box width (text + 2 spaces padding + 2 borders)
         int text_width = text.length();
         int box_width = text_width + 2; // 1 space on each side
 
         // Top border
-        std::cout << top_left;
+        std::cout << chars.top_left;
         for (int i = 0; i < box_width; ++i) {
-            std::cout << horizontal;
+            std::cout << chars.horizontal;
         }
-        std::cout << top_right << "\n";
+        std::cout << chars.top_right << "\n";
 
         // Middle with text
-        std::cout << vertical << " " << text << " " << vertical << "\n";
+        std::cout << chars.vertical << " " << text << " " << chars.vertical << "\n";
 
         // Bottom border
-        std::cout << bottom_left;
+        std::cout << chars.bottom_left;
         for (int i = 0; i < box_width; ++i) {
-            std::cout << horizontal;
+            std::cout << chars.horizontal;
         }
-        std::cout << bottom_right << "\n";
+        std::cout << chars.bottom_right << "\n";
     }
 
     // =================================================================================================
@@ -412,64 +394,7 @@ namespace echo {
      *   // ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
      */
     inline void banner(const std::string &text, BoxStyle style = BoxStyle::Heavy) {
-        // Box drawing characters for each style (initialized to Heavy style as default)
-        const char *top_left = "┏";
-        const char *top_right = "┓";
-        const char *bottom_left = "┗";
-        const char *bottom_right = "┛";
-        const char *horizontal = "━";
-        const char *vertical = "┃";
-
-        switch (style) {
-        case BoxStyle::Single:
-            top_left = "┌";
-            top_right = "┐";
-            bottom_left = "└";
-            bottom_right = "┘";
-            horizontal = "─";
-            vertical = "│";
-            break;
-        case BoxStyle::Double:
-            top_left = "╔";
-            top_right = "╗";
-            bottom_left = "╚";
-            bottom_right = "╝";
-            horizontal = "═";
-            vertical = "║";
-            break;
-        case BoxStyle::Rounded:
-            top_left = "╭";
-            top_right = "╮";
-            bottom_left = "╰";
-            bottom_right = "╯";
-            horizontal = "─";
-            vertical = "│";
-            break;
-        case BoxStyle::Heavy:
-            top_left = "┏";
-            top_right = "┓";
-            bottom_left = "┗";
-            bottom_right = "┛";
-            horizontal = "━";
-            vertical = "┃";
-            break;
-        case BoxStyle::Dashed:
-            top_left = "┏";
-            top_right = "┓";
-            bottom_left = "┗";
-            bottom_right = "┛";
-            horizontal = "╍";
-            vertical = "╏";
-            break;
-        case BoxStyle::ASCII:
-            top_left = "+";
-            top_right = "+";
-            bottom_left = "+";
-            bottom_right = "+";
-            horizontal = "-";
-            vertical = "|";
-            break;
-        }
+        auto chars = detail::BoxChars::get(style);
 
         int width = detail::get_terminal_width();
         int text_len = text.length();
@@ -484,36 +409,36 @@ namespace echo {
         int right_pad = total_padding - left_pad;
 
         // Top border
-        std::cout << top_left;
+        std::cout << chars.top_left;
         for (int i = 0; i < content_width + 2; ++i) {
-            std::cout << horizontal;
+            std::cout << chars.horizontal;
         }
-        std::cout << top_right << "\n";
+        std::cout << chars.top_right << "\n";
 
         // Empty line
-        std::cout << vertical;
+        std::cout << chars.vertical;
         for (int i = 0; i < content_width + 2; ++i) {
             std::cout << " ";
         }
-        std::cout << vertical << "\n";
+        std::cout << chars.vertical << "\n";
 
         // Middle with centered text
-        std::cout << vertical << " " << std::string(left_pad, ' ') << text << std::string(right_pad, ' ') << " "
-                  << vertical << "\n";
+        std::cout << chars.vertical << " " << std::string(left_pad, ' ') << text << std::string(right_pad, ' ') << " "
+                  << chars.vertical << "\n";
 
         // Empty line
-        std::cout << vertical;
+        std::cout << chars.vertical;
         for (int i = 0; i < content_width + 2; ++i) {
             std::cout << " ";
         }
-        std::cout << vertical << "\n";
+        std::cout << chars.vertical << "\n";
 
         // Bottom border
-        std::cout << bottom_left;
+        std::cout << chars.bottom_left;
         for (int i = 0; i < content_width + 2; ++i) {
-            std::cout << horizontal;
+            std::cout << chars.horizontal;
         }
-        std::cout << bottom_right << "\n";
+        std::cout << chars.bottom_right << "\n";
     }
 
     // =================================================================================================
@@ -529,85 +454,28 @@ namespace echo {
     inline void box(const std::string &text, BoxStyle style, const std::string &color) {
         std::string color_code = detail::get_single_color(color);
         std::string reset = color_code.empty() ? "" : detail::reset_color();
-
-        // Get box characters (initialized to Single style as default)
-        const char *top_left = "┌";
-        const char *top_right = "┐";
-        const char *bottom_left = "└";
-        const char *bottom_right = "┘";
-        const char *horizontal = "─";
-        const char *vertical = "│";
-
-        switch (style) {
-        case BoxStyle::Single:
-            top_left = "┌";
-            top_right = "┐";
-            bottom_left = "└";
-            bottom_right = "┘";
-            horizontal = "─";
-            vertical = "│";
-            break;
-        case BoxStyle::Double:
-            top_left = "╔";
-            top_right = "╗";
-            bottom_left = "╚";
-            bottom_right = "╝";
-            horizontal = "═";
-            vertical = "║";
-            break;
-        case BoxStyle::Rounded:
-            top_left = "╭";
-            top_right = "╮";
-            bottom_left = "╰";
-            bottom_right = "╯";
-            horizontal = "─";
-            vertical = "│";
-            break;
-        case BoxStyle::Heavy:
-            top_left = "┏";
-            top_right = "┓";
-            bottom_left = "┗";
-            bottom_right = "┛";
-            horizontal = "━";
-            vertical = "┃";
-            break;
-        case BoxStyle::Dashed:
-            top_left = "┏";
-            top_right = "┓";
-            bottom_left = "┗";
-            bottom_right = "┛";
-            horizontal = "╍";
-            vertical = "╏";
-            break;
-        case BoxStyle::ASCII:
-            top_left = "+";
-            top_right = "+";
-            bottom_left = "+";
-            bottom_right = "+";
-            horizontal = "-";
-            vertical = "|";
-            break;
-        }
+        auto chars = detail::BoxChars::get(style);
 
         int text_width = text.length();
         int box_width = text_width + 2;
 
         // Top border
-        std::cout << color_code << top_left;
+        std::cout << color_code << chars.top_left;
         for (int i = 0; i < box_width; ++i) {
-            std::cout << horizontal;
+            std::cout << chars.horizontal;
         }
-        std::cout << top_right << reset << "\n";
+        std::cout << chars.top_right << reset << "\n";
 
         // Middle with text
-        std::cout << color_code << vertical << reset << " " << text << " " << color_code << vertical << reset << "\n";
+        std::cout << color_code << chars.vertical << reset << " " << text << " " << color_code << chars.vertical
+                  << reset << "\n";
 
         // Bottom border
-        std::cout << color_code << bottom_left;
+        std::cout << color_code << chars.bottom_left;
         for (int i = 0; i < box_width; ++i) {
-            std::cout << horizontal;
+            std::cout << chars.horizontal;
         }
-        std::cout << bottom_right << reset << "\n";
+        std::cout << chars.bottom_right << reset << "\n";
     }
 
     /**
@@ -622,64 +490,7 @@ namespace echo {
             return;
         }
 
-        // Get box characters (same as above, initialized to Single style as default)
-        const char *top_left = "┌";
-        const char *top_right = "┐";
-        const char *bottom_left = "└";
-        const char *bottom_right = "┘";
-        const char *horizontal = "─";
-        const char *vertical = "│";
-
-        switch (style) {
-        case BoxStyle::Single:
-            top_left = "┌";
-            top_right = "┐";
-            bottom_left = "└";
-            bottom_right = "┘";
-            horizontal = "─";
-            vertical = "│";
-            break;
-        case BoxStyle::Double:
-            top_left = "╔";
-            top_right = "╗";
-            bottom_left = "╚";
-            bottom_right = "╝";
-            horizontal = "═";
-            vertical = "║";
-            break;
-        case BoxStyle::Rounded:
-            top_left = "╭";
-            top_right = "╮";
-            bottom_left = "╰";
-            bottom_right = "╯";
-            horizontal = "─";
-            vertical = "│";
-            break;
-        case BoxStyle::Heavy:
-            top_left = "┏";
-            top_right = "┓";
-            bottom_left = "┗";
-            bottom_right = "┛";
-            horizontal = "━";
-            vertical = "┃";
-            break;
-        case BoxStyle::Dashed:
-            top_left = "┏";
-            top_right = "┓";
-            bottom_left = "┗";
-            bottom_right = "┛";
-            horizontal = "╍";
-            vertical = "╏";
-            break;
-        case BoxStyle::ASCII:
-            top_left = "+";
-            top_right = "+";
-            bottom_left = "+";
-            bottom_right = "+";
-            horizontal = "-";
-            vertical = "|";
-            break;
-        }
+        auto chars = detail::BoxChars::get(style);
 
         int text_width = text.length();
         int box_width = text_width + 2;
@@ -687,31 +498,31 @@ namespace echo {
 
         // Top border with gradient
         int pos = 0;
-        std::cout << detail::get_gradient_color(gradient, static_cast<float>(pos++) / total_width) << top_left
+        std::cout << detail::get_gradient_color(gradient, static_cast<float>(pos++) / total_width) << chars.top_left
                   << detail::reset_color();
         for (int i = 0; i < box_width; ++i) {
-            std::cout << detail::get_gradient_color(gradient, static_cast<float>(pos++) / total_width) << horizontal
-                      << detail::reset_color();
+            std::cout << detail::get_gradient_color(gradient, static_cast<float>(pos++) / total_width)
+                      << chars.horizontal << detail::reset_color();
         }
-        std::cout << detail::get_gradient_color(gradient, static_cast<float>(pos++) / total_width) << top_right
+        std::cout << detail::get_gradient_color(gradient, static_cast<float>(pos++) / total_width) << chars.top_right
                   << detail::reset_color() << "\n";
 
         // Middle with text
         pos = 0;
-        std::cout << detail::get_gradient_color(gradient, static_cast<float>(pos++) / total_width) << vertical
+        std::cout << detail::get_gradient_color(gradient, static_cast<float>(pos++) / total_width) << chars.vertical
                   << detail::reset_color() << " " << text << " "
-                  << detail::get_gradient_color(gradient, static_cast<float>(total_width - 1) / total_width) << vertical
-                  << detail::reset_color() << "\n";
+                  << detail::get_gradient_color(gradient, static_cast<float>(total_width - 1) / total_width)
+                  << chars.vertical << detail::reset_color() << "\n";
 
         // Bottom border with gradient
         pos = 0;
-        std::cout << detail::get_gradient_color(gradient, static_cast<float>(pos++) / total_width) << bottom_left
+        std::cout << detail::get_gradient_color(gradient, static_cast<float>(pos++) / total_width) << chars.bottom_left
                   << detail::reset_color();
         for (int i = 0; i < box_width; ++i) {
-            std::cout << detail::get_gradient_color(gradient, static_cast<float>(pos++) / total_width) << horizontal
-                      << detail::reset_color();
+            std::cout << detail::get_gradient_color(gradient, static_cast<float>(pos++) / total_width)
+                      << chars.horizontal << detail::reset_color();
         }
-        std::cout << detail::get_gradient_color(gradient, static_cast<float>(pos++) / total_width) << bottom_right
+        std::cout << detail::get_gradient_color(gradient, static_cast<float>(pos++) / total_width) << chars.bottom_right
                   << detail::reset_color() << "\n";
     }
 
@@ -790,65 +601,7 @@ namespace echo {
     inline void banner(const std::string &text, BoxStyle style, const std::string &color) {
         std::string color_code = detail::get_single_color(color);
         std::string reset = color_code.empty() ? "" : detail::reset_color();
-
-        // Get box characters (initialized to Heavy style as default)
-        const char *top_left = "┏";
-        const char *top_right = "┓";
-        const char *bottom_left = "┗";
-        const char *bottom_right = "┛";
-        const char *horizontal = "━";
-        const char *vertical = "┃";
-
-        switch (style) {
-        case BoxStyle::Single:
-            top_left = "┌";
-            top_right = "┐";
-            bottom_left = "└";
-            bottom_right = "┘";
-            horizontal = "─";
-            vertical = "│";
-            break;
-        case BoxStyle::Double:
-            top_left = "╔";
-            top_right = "╗";
-            bottom_left = "╚";
-            bottom_right = "╝";
-            horizontal = "═";
-            vertical = "║";
-            break;
-        case BoxStyle::Rounded:
-            top_left = "╭";
-            top_right = "╮";
-            bottom_left = "╰";
-            bottom_right = "╯";
-            horizontal = "─";
-            vertical = "│";
-            break;
-        case BoxStyle::Heavy:
-            top_left = "┏";
-            top_right = "┓";
-            bottom_left = "┗";
-            bottom_right = "┛";
-            horizontal = "━";
-            vertical = "┃";
-            break;
-        case BoxStyle::Dashed:
-            top_left = "┏";
-            top_right = "┓";
-            bottom_left = "┗";
-            bottom_right = "┛";
-            horizontal = "╍";
-            vertical = "╏";
-            break;
-        case BoxStyle::ASCII:
-            top_left = "+";
-            top_right = "+";
-            bottom_left = "+";
-            bottom_right = "+";
-            horizontal = "-";
-            vertical = "|";
-            break;
-        }
+        auto chars = detail::BoxChars::get(style);
 
         int width = detail::get_terminal_width();
         int text_len = text.length();
@@ -863,36 +616,36 @@ namespace echo {
         int right_pad = total_padding - left_pad;
 
         // Top border
-        std::cout << color_code << top_left;
+        std::cout << color_code << chars.top_left;
         for (int i = 0; i < content_width + 2; ++i) {
-            std::cout << horizontal;
+            std::cout << chars.horizontal;
         }
-        std::cout << top_right << reset << "\n";
+        std::cout << chars.top_right << reset << "\n";
 
         // Empty line
-        std::cout << color_code << vertical << reset;
+        std::cout << color_code << chars.vertical << reset;
         for (int i = 0; i < content_width + 2; ++i) {
             std::cout << " ";
         }
-        std::cout << color_code << vertical << reset << "\n";
+        std::cout << color_code << chars.vertical << reset << "\n";
 
         // Middle with centered text
-        std::cout << color_code << vertical << reset << " " << std::string(left_pad, ' ') << text
-                  << std::string(right_pad, ' ') << " " << color_code << vertical << reset << "\n";
+        std::cout << color_code << chars.vertical << reset << " " << std::string(left_pad, ' ') << text
+                  << std::string(right_pad, ' ') << " " << color_code << chars.vertical << reset << "\n";
 
         // Empty line
-        std::cout << color_code << vertical << reset;
+        std::cout << color_code << chars.vertical << reset;
         for (int i = 0; i < content_width + 2; ++i) {
             std::cout << " ";
         }
-        std::cout << color_code << vertical << reset << "\n";
+        std::cout << color_code << chars.vertical << reset << "\n";
 
         // Bottom border
-        std::cout << color_code << bottom_left;
+        std::cout << color_code << chars.bottom_left;
         for (int i = 0; i < content_width + 2; ++i) {
-            std::cout << horizontal;
+            std::cout << chars.horizontal;
         }
-        std::cout << bottom_right << reset << "\n";
+        std::cout << chars.bottom_right << reset << "\n";
     }
 
     // =================================================================================================
@@ -901,15 +654,15 @@ namespace echo {
 
     namespace detail {
 
-        inline void hide_cursor() { std::cout << "\033[?25l" << std::flush; }
+        inline void hide_cursor() noexcept { std::cout << "\033[?25l" << std::flush; }
 
-        inline void show_cursor() { std::cout << "\033[?25h" << std::flush; }
+        inline void show_cursor() noexcept { std::cout << "\033[?25h" << std::flush; }
 
-        inline void move_cursor_up(int lines = 1) { std::cout << "\033[" << lines << "A" << std::flush; }
+        inline void move_cursor_up(int lines = 1) noexcept { std::cout << "\033[" << lines << "A" << std::flush; }
 
-        inline void clear_line() { std::cout << "\033[2K\r" << std::flush; }
+        inline void clear_line() noexcept { std::cout << "\033[2K\r" << std::flush; }
 
-        inline std::mutex &get_wait_mutex() {
+        inline std::mutex &get_wait_mutex() noexcept {
             static std::mutex mtx;
             return mtx;
         }
@@ -1083,9 +836,9 @@ namespace echo {
             }
         }
 
-        int get_interval_ms() const { return interval_ms_; }
+        [[nodiscard]] int get_interval_ms() const noexcept { return interval_ms_; }
 
-        bool is_running() const { return is_running_; }
+        [[nodiscard]] bool is_running() const noexcept { return is_running_; }
     };
 
     // =================================================================================================
@@ -1491,9 +1244,9 @@ namespace echo {
             std::cout << "\n";
         }
 
-        bool is_completed() const { return current_ >= total_; }
+        [[nodiscard]] bool is_completed() const noexcept { return current_ >= total_; }
 
-        size_t get_progress() const { return current_; }
+        [[nodiscard]] size_t get_progress() const noexcept { return current_; }
     };
 
     // =================================================================================================
@@ -1582,11 +1335,11 @@ namespace echo {
             }
         }
 
-        bool is_complete() const { return current_step_ >= step_names_.size(); }
+        [[nodiscard]] bool is_complete() const noexcept { return current_step_ >= step_names_.size(); }
 
-        size_t get_current_step() const { return current_step_; }
+        [[nodiscard]] size_t get_current_step() const noexcept { return current_step_; }
 
-        size_t get_total_steps() const { return step_names_.size(); }
+        [[nodiscard]] size_t get_total_steps() const noexcept { return step_names_.size(); }
     };
 
     // =================================================================================================
@@ -1599,7 +1352,7 @@ namespace echo {
      * @param sep_char Character to use for the separator
      * @return Formatted String object
      */
-    inline format::String make_separator(const std::string &text = "", char sep_char = '-') {
+    [[nodiscard]] inline format::String make_separator(const std::string &text = "", char sep_char = '-') {
         int width = detail::get_terminal_width();
         std::string result;
 
@@ -1626,82 +1379,26 @@ namespace echo {
      * @param style Box style
      * @return Formatted String object
      */
-    inline format::String make_box(const std::string &text, BoxStyle style = BoxStyle::Single) {
-        const char *top_left = "┌";
-        const char *top_right = "┐";
-        const char *bottom_left = "└";
-        const char *bottom_right = "┘";
-        const char *horizontal = "─";
-        const char *vertical = "│";
-
-        switch (style) {
-        case BoxStyle::Single:
-            top_left = "┌";
-            top_right = "┐";
-            bottom_left = "└";
-            bottom_right = "┘";
-            horizontal = "─";
-            vertical = "│";
-            break;
-        case BoxStyle::Double:
-            top_left = "╔";
-            top_right = "╗";
-            bottom_left = "╚";
-            bottom_right = "╝";
-            horizontal = "═";
-            vertical = "║";
-            break;
-        case BoxStyle::Rounded:
-            top_left = "╭";
-            top_right = "╮";
-            bottom_left = "╰";
-            bottom_right = "╯";
-            horizontal = "─";
-            vertical = "│";
-            break;
-        case BoxStyle::Heavy:
-            top_left = "┏";
-            top_right = "┓";
-            bottom_left = "┗";
-            bottom_right = "┛";
-            horizontal = "━";
-            vertical = "┃";
-            break;
-        case BoxStyle::Dashed:
-            top_left = "┏";
-            top_right = "┓";
-            bottom_left = "┗";
-            bottom_right = "┛";
-            horizontal = "╍";
-            vertical = "╏";
-            break;
-        case BoxStyle::ASCII:
-            top_left = "+";
-            top_right = "+";
-            bottom_left = "+";
-            bottom_right = "+";
-            horizontal = "-";
-            vertical = "|";
-            break;
-        }
+    [[nodiscard]] inline format::String make_box(const std::string &text, BoxStyle style = BoxStyle::Single) {
+        auto chars = detail::BoxChars::get(style);
 
         int text_width = text.length();
         int box_width = text_width + 2;
 
         std::string result;
-        result += top_left;
+        result += chars.top_left;
         for (int i = 0; i < box_width; ++i) {
-            result += horizontal;
+            result += chars.horizontal;
         }
-        result += top_right;
+        result += chars.top_right;
         result += "\n";
-        result += std::string(vertical) + " " + text + " " + std::string(vertical);
+        result += std::string(chars.vertical) + " " + text + " " + std::string(chars.vertical);
         result += "\n";
-        result += bottom_left;
+        result += chars.bottom_left;
         for (int i = 0; i < box_width; ++i) {
-            result += horizontal;
+            result += chars.horizontal;
         }
-        result += bottom_right;
+        result += chars.bottom_right;
 
         return format::String(result);
     }
@@ -1711,7 +1408,7 @@ namespace echo {
      * @param text Header text
      * @return Formatted String object
      */
-    inline format::String make_header(const std::string &text) {
+    [[nodiscard]] inline format::String make_header(const std::string &text) {
         int width = detail::get_terminal_width();
         int text_len = text.length();
         int padding = 2;
@@ -1747,7 +1444,7 @@ namespace echo {
      * @param border_char Border character
      * @return Formatted String object
      */
-    inline format::String make_title(const std::string &text, char border_char = '=') {
+    [[nodiscard]] inline format::String make_title(const std::string &text, char border_char = '=') {
         int width = detail::get_terminal_width();
         int text_len = text.length();
 
@@ -1773,64 +1470,8 @@ namespace echo {
      * @param style Box style
      * @return Formatted String object
      */
-    inline format::String make_banner(const std::string &text, BoxStyle style = BoxStyle::Heavy) {
-        const char *top_left = "┏";
-        const char *top_right = "┓";
-        const char *bottom_left = "┗";
-        const char *bottom_right = "┛";
-        const char *horizontal = "━";
-        const char *vertical = "┃";
-
-        switch (style) {
-        case BoxStyle::Single:
-            top_left = "┌";
-            top_right = "┐";
-            bottom_left = "└";
-            bottom_right = "┘";
-            horizontal = "─";
-            vertical = "│";
-            break;
-        case BoxStyle::Double:
-            top_left = "╔";
-            top_right = "╗";
-            bottom_left = "╚";
-            bottom_right = "╝";
-            horizontal = "═";
-            vertical = "║";
-            break;
-        case BoxStyle::Rounded:
-            top_left = "╭";
-            top_right = "╮";
-            bottom_left = "╰";
-            bottom_right = "╯";
-            horizontal = "─";
-            vertical = "│";
-            break;
-        case BoxStyle::Heavy:
-            top_left = "┏";
-            top_right = "┓";
-            bottom_left = "┗";
-            bottom_right = "┛";
-            horizontal = "━";
-            vertical = "┃";
-            break;
-        case BoxStyle::Dashed:
-            top_left = "┏";
-            top_right = "┓";
-            bottom_left = "┗";
-            bottom_right = "┛";
-            horizontal = "╍";
-            vertical = "╏";
-            break;
-        case BoxStyle::ASCII:
-            top_left = "+";
-            top_right = "+";
-            bottom_left = "+";
-            bottom_right = "+";
-            horizontal = "-";
-            vertical = "|";
-            break;
-        }
+    [[nodiscard]] inline format::String make_banner(const std::string &text, BoxStyle style = BoxStyle::Heavy) {
+        auto chars = detail::BoxChars::get(style);
 
         int width = detail::get_terminal_width();
         int text_len = text.length();
@@ -1845,36 +1486,36 @@ namespace echo {
         int right_pad = total_padding - left_pad;
 
         std::string result;
-        result += top_left;
+        result += chars.top_left;
         for (int i = 0; i < content_width + 2; ++i) {
-            result += horizontal;
+            result += chars.horizontal;
         }
-        result += top_right;
+        result += chars.top_right;
         result += "\n";
 
-        result += vertical;
-        for (int i = 0; i < content_width + 2; ++i) {
-            result += " ";
-        }
-        result += vertical;
-        result += "\n";
-
-        result += std::string(vertical) + " " + std::string(left_pad, ' ') + text + std::string(right_pad, ' ') + " " +
-                  std::string(vertical);
-        result += "\n";
-
-        result += vertical;
+        result += chars.vertical;
         for (int i = 0; i < content_width + 2; ++i) {
             result += " ";
         }
-        result += vertical;
+        result += chars.vertical;
         result += "\n";
 
-        result += bottom_left;
+        result += std::string(chars.vertical) + " " + std::string(left_pad, ' ') + text + std::string(right_pad, ' ') +
+                  " " + std::string(chars.vertical);
+        result += "\n";
+
+        result += chars.vertical;
         for (int i = 0; i < content_width + 2; ++i) {
-            result += horizontal;
+            result += " ";
         }
-        result += bottom_right;
+        result += chars.vertical;
+        result += "\n";
+
+        result += chars.bottom_left;
+        for (int i = 0; i < content_width + 2; ++i) {
+            result += chars.horizontal;
+        }
+        result += chars.bottom_right;
 
         return format::String(result);
     }

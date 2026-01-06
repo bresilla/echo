@@ -125,22 +125,32 @@ namespace echo {
         // Thread safety
         // =================================================================================================
 
-        inline std::mutex &get_log_mutex() {
+        inline std::mutex &get_log_mutex() noexcept {
             static std::mutex log_mutex;
             return log_mutex;
         }
 
         // =================================================================================================
         // Once tracking (for .once() functionality)
+        // Uses hash-based keys to avoid string allocations in hot paths
         // =================================================================================================
 
-        inline std::unordered_set<std::string> &get_once_set() {
-            static std::unordered_set<std::string> once_set;
+        inline std::unordered_set<size_t> &get_once_set() noexcept {
+            static std::unordered_set<size_t> once_set;
             return once_set;
         }
 
-        inline bool check_and_mark_once(const char *file, int line) {
-            std::string key = std::string(file) + ":" + std::to_string(line);
+        /**
+         * @brief Compute a hash key from file pointer and line number
+         * @note Uses pointer value directly to avoid string allocation
+         */
+        inline size_t make_location_key(const char *file, int line) noexcept {
+            // Combine file pointer hash with line number
+            return std::hash<const void *>{}(static_cast<const void *>(file)) ^ (static_cast<size_t>(line) << 16);
+        }
+
+        [[nodiscard]] inline bool check_and_mark_once(const char *file, int line) {
+            size_t key = make_location_key(file, line);
             std::lock_guard<std::mutex> lock(get_log_mutex());
             if (get_once_set().count(key)) {
                 return false; // Already printed
@@ -151,17 +161,18 @@ namespace echo {
 
         // =================================================================================================
         // Every tracking (for .every() functionality - time-based throttling)
+        // Uses hash-based keys to avoid string allocations in hot paths
         // =================================================================================================
 
         using time_point = std::chrono::steady_clock::time_point;
 
-        inline std::unordered_map<std::string, time_point> &get_every_map() {
-            static std::unordered_map<std::string, time_point> every_map;
+        inline std::unordered_map<size_t, time_point> &get_every_map() noexcept {
+            static std::unordered_map<size_t, time_point> every_map;
             return every_map;
         }
 
-        inline bool check_every(const char *file, int line, int64_t interval_ms) {
-            std::string key = std::string(file) + ":" + std::to_string(line);
+        [[nodiscard]] inline bool check_every(const char *file, int line, int64_t interval_ms) {
+            size_t key = make_location_key(file, line);
             auto now = std::chrono::steady_clock::now();
 
             std::lock_guard<std::mutex> lock(get_log_mutex());
@@ -270,12 +281,12 @@ namespace echo {
 #endif
         }
 
-        inline Level &get_runtime_level() {
+        inline Level &get_runtime_level() noexcept {
             static Level runtime_level = init_runtime_level();
             return runtime_level;
         }
 
-        inline Level get_effective_level() {
+        [[nodiscard]] inline Level get_effective_level() noexcept {
             Level runtime = get_runtime_level();
             return (runtime == Level::Off) ? ACTIVE_LEVEL : runtime;
         }
@@ -332,7 +343,7 @@ namespace echo {
         // ANSI color codes
         // =================================================================================================
 
-        inline const char *level_color(Level level) {
+        [[nodiscard]] inline const char *level_color(Level level) noexcept {
             switch (level) {
             case Level::Trace:
                 return "\033[38;2;128;128;128m\033[1m"; // Bold Gray (RGB: 128,128,128)
@@ -351,7 +362,7 @@ namespace echo {
             }
         }
 
-        inline const char *level_name(Level level) {
+        [[nodiscard]] inline const char *level_name(Level level) noexcept {
             switch (level) {
             case Level::Trace:
                 return "trace";
@@ -457,6 +468,28 @@ namespace echo {
             }
         }
 
+        // Move semantics - allow moving but prevent copying
+        log_proxy(log_proxy &&other) noexcept
+            : message_(std::move(other.message_)), color_code_(std::move(other.color_code_)),
+              skip_print_(other.skip_print_), inplace_(other.inplace_) {
+            other.skip_print_ = true; // Prevent moved-from object from printing
+        }
+
+        log_proxy &operator=(log_proxy &&other) noexcept {
+            if (this != &other) {
+                message_ = std::move(other.message_);
+                color_code_ = std::move(other.color_code_);
+                skip_print_ = other.skip_print_;
+                inplace_ = other.inplace_;
+                other.skip_print_ = true;
+            }
+            return *this;
+        }
+
+        // Prevent copying
+        log_proxy(const log_proxy &) = delete;
+        log_proxy &operator=(const log_proxy &) = delete;
+
         // Color methods (24-bit RGB)
         log_proxy &red() {
             color_code_ = "\033[38;2;255;0;0m";
@@ -509,18 +542,22 @@ namespace echo {
 #ifdef ECHO_COLOR_HPP
             color_code_ = detail::rgb_to_ansi(detail::hex_to_rgb(hex_color));
 #else
-            // Fallback: parse hex manually
-            if (hex_color.length() >= 6) {
-                std::string h = hex_color;
-                if (h[0] == '#')
-                    h = h.substr(1);
-                if (h.length() == 6) {
-                    int r = std::stoi(h.substr(0, 2), nullptr, 16);
-                    int g = std::stoi(h.substr(2, 2), nullptr, 16);
-                    int b = std::stoi(h.substr(4, 2), nullptr, 16);
-                    color_code_ =
-                        "\033[38;2;" + std::to_string(r) + ";" + std::to_string(g) + ";" + std::to_string(b) + "m";
+            // Fallback: parse hex manually with exception safety
+            try {
+                if (hex_color.length() >= 6) {
+                    std::string h = hex_color;
+                    if (h[0] == '#')
+                        h = h.substr(1);
+                    if (h.length() == 6) {
+                        int r = std::stoi(h.substr(0, 2), nullptr, 16);
+                        int g = std::stoi(h.substr(2, 2), nullptr, 16);
+                        int b = std::stoi(h.substr(4, 2), nullptr, 16);
+                        color_code_ =
+                            "\033[38;2;" + std::to_string(r) + ";" + std::to_string(g) + ";" + std::to_string(b) + "m";
+                    }
                 }
+            } catch (const std::exception &) {
+                // Invalid hex color, leave color_code_ unchanged
             }
 #endif
             return *this;
@@ -534,13 +571,8 @@ namespace echo {
 
         // Print only once (internal - use ONCE macro instead)
         log_proxy &once_impl(const char *file, int line) {
-            std::string key = std::string(file) + ":" + std::to_string(line);
-            std::lock_guard<std::mutex> lock(detail::get_log_mutex());
-            static std::unordered_set<std::string> once_set;
-            if (once_set.count(key)) {
+            if (!detail::check_and_mark_once(file, line)) {
                 skip_print_ = true;
-            } else {
-                once_set.insert(key);
             }
             return *this;
         }
@@ -641,6 +673,28 @@ namespace echo {
             message_ = oss.str();
         }
 
+        // Move semantics - allow moving but prevent copying
+        print_proxy(print_proxy &&other) noexcept
+            : message_(std::move(other.message_)), color_code_(std::move(other.color_code_)),
+              skip_print_(other.skip_print_), inplace_(other.inplace_) {
+            other.skip_print_ = true; // Prevent moved-from object from printing
+        }
+
+        print_proxy &operator=(print_proxy &&other) noexcept {
+            if (this != &other) {
+                message_ = std::move(other.message_);
+                color_code_ = std::move(other.color_code_);
+                skip_print_ = other.skip_print_;
+                inplace_ = other.inplace_;
+                other.skip_print_ = true;
+            }
+            return *this;
+        }
+
+        // Prevent copying
+        print_proxy(const print_proxy &) = delete;
+        print_proxy &operator=(const print_proxy &) = delete;
+
         // Color methods (24-bit RGB)
         print_proxy &red() {
             color_code_ = "\033[38;2;255;0;0m";
@@ -689,17 +743,21 @@ namespace echo {
 
         // Custom hex color
         print_proxy &hex(const std::string &hex_color) {
-            if (hex_color.length() >= 6) {
-                std::string h = hex_color;
-                if (h[0] == '#')
-                    h = h.substr(1);
-                if (h.length() == 6) {
-                    int r = std::stoi(h.substr(0, 2), nullptr, 16);
-                    int g = std::stoi(h.substr(2, 2), nullptr, 16);
-                    int b = std::stoi(h.substr(4, 2), nullptr, 16);
-                    color_code_ =
-                        "\033[38;2;" + std::to_string(r) + ";" + std::to_string(g) + ";" + std::to_string(b) + "m";
+            try {
+                if (hex_color.length() >= 6) {
+                    std::string h = hex_color;
+                    if (h[0] == '#')
+                        h = h.substr(1);
+                    if (h.length() == 6) {
+                        int r = std::stoi(h.substr(0, 2), nullptr, 16);
+                        int g = std::stoi(h.substr(2, 2), nullptr, 16);
+                        int b = std::stoi(h.substr(4, 2), nullptr, 16);
+                        color_code_ =
+                            "\033[38;2;" + std::to_string(r) + ";" + std::to_string(g) + ";" + std::to_string(b) + "m";
+                    }
                 }
+            } catch (const std::exception &) {
+                // Invalid hex color, leave color_code_ unchanged
             }
             return *this;
         }
@@ -712,13 +770,8 @@ namespace echo {
 
         // Print only once (internal - use ONCE macro instead)
         print_proxy &once_impl(const char *file, int line) {
-            std::string key = std::string(file) + ":" + std::to_string(line);
-            std::lock_guard<std::mutex> lock(detail::get_log_mutex());
-            static std::unordered_set<std::string> once_set;
-            if (once_set.count(key)) {
+            if (!detail::check_and_mark_once(file, line)) {
                 skip_print_ = true;
-            } else {
-                once_set.insert(key);
             }
             return *this;
         }
@@ -810,9 +863,9 @@ namespace echo {
     // Utility: Get/check current log level
     // =================================================================================================
 
-    inline constexpr Level current_level() { return detail::ACTIVE_LEVEL; }
+    [[nodiscard]] inline constexpr Level current_level() noexcept { return detail::ACTIVE_LEVEL; }
 
-    template <Level L> inline constexpr bool is_enabled() {
+    template <Level L> [[nodiscard]] inline constexpr bool is_enabled() noexcept {
         return static_cast<int>(L) >= static_cast<int>(detail::ACTIVE_LEVEL);
     }
 
@@ -820,9 +873,9 @@ namespace echo {
     // Runtime log level control
     // =================================================================================================
 
-    inline void set_level(Level level) { detail::get_runtime_level() = level; }
+    inline void set_level(Level level) noexcept { detail::get_runtime_level() = level; }
 
-    inline Level get_level() { return detail::get_effective_level(); }
+    [[nodiscard]] inline Level get_level() noexcept { return detail::get_effective_level(); }
 
     // =================================================================================================
     // Structured logging (key-value pairs)
@@ -920,3 +973,53 @@ namespace echo {
  * Usage: echo::info("Status update").every(1000)  // prints at most once per second
  */
 #define every(ms) every_impl(__FILE__, __LINE__, ms)
+
+// =================================================================================================
+// Compile-out debug macros for release builds
+// These macros completely eliminate debug/trace logging overhead in release builds
+// =================================================================================================
+
+#ifdef NDEBUG
+/**
+ * @brief Debug logging macro that compiles to nothing in release builds
+ * Usage: ECHO_DEBUG("Debug message: ", value);
+ */
+#define ECHO_DEBUG(...) ((void)0)
+
+/**
+ * @brief Trace logging macro that compiles to nothing in release builds
+ * Usage: ECHO_TRACE("Trace message: ", value);
+ */
+#define ECHO_TRACE(...) ((void)0)
+#else
+#define ECHO_DEBUG(...) echo::debug(__VA_ARGS__)
+#define ECHO_TRACE(...) echo::trace(__VA_ARGS__)
+#endif
+
+// =================================================================================================
+// C++20 source_location support (optional)
+// =================================================================================================
+
+#if __cplusplus >= 202002L && __has_include(<source_location>)
+#include <source_location>
+
+namespace echo {
+    /**
+     * @brief Log with automatic source location (C++20 only)
+     * @param msg Message to log
+     * @param loc Source location (auto-captured)
+     */
+    template <Level L>
+    inline void log_with_location(const std::string &msg,
+                                  const std::source_location &loc = std::source_location::current()) {
+        if constexpr (static_cast<int>(L) >= static_cast<int>(detail::ACTIVE_LEVEL)) {
+            if (static_cast<int>(L) >= static_cast<int>(detail::get_effective_level())) {
+                std::lock_guard<std::mutex> lock(detail::get_log_mutex());
+                std::ostream &out = (L >= Level::Error) ? std::cerr : std::cout;
+                out << detail::level_color(L) << "[" << detail::level_name(L) << "]" << detail::RESET << " " << msg
+                    << " [" << loc.file_name() << ":" << loc.line() << " " << loc.function_name() << "]\n";
+            }
+        }
+    }
+} // namespace echo
+#endif
