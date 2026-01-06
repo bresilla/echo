@@ -1,3 +1,8 @@
+## [0.0.21] - 2026-01-06
+
+### 🚀 Features
+
+- Enhance README with extended usage examples
 ## [0.0.20] - 2026-01-06
 
 ### 🚀 Features
