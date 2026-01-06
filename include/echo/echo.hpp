@@ -86,8 +86,8 @@
 
 #ifdef ECHO_ENABLE_TIMESTAMP
 #include <iomanip>
-#endif
 
+#endif
 namespace echo {
 
     // =================================================================================================
