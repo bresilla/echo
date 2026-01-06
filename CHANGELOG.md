@@ -1,3 +1,8 @@
+## [0.0.20] - 2026-01-06
+
+### 🚀 Features
+
+- Enhance echo include functionality
 # Changelog
 
 ## [0.0.19] - 2026-01-05
