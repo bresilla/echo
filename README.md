@@ -23,31 +23,59 @@
 ## Quick Start
 
 ```cpp
-#include <echo/echo.hpp>
+#include <echo.hpp>
 
 int main() {
     // Simple printing (no log levels)
     echo("Hello, world!");
     echo("Colored text").red().bold();
-    
+
     // Logging with levels
     echo::info("Hello, world!");
     echo::debug("Value: ", 42);
     echo::error("Something went wrong!").red();
-    
+
     // Fluent interface with colors
     echo::warn("Warning!").yellow().bold();
     echo::info("Custom color").hex("#FF1493");
     echo::error("RGB color").rgb(255, 87, 51);
-    
+
     // Print only once (useful in loops)
     for (int i = 0; i < 1000; i++) {
         echo::info("This prints only once!").once();
     }
-    
+
     return 0;
 }
 ```
+
+## Header-Only
+
+Since this is a header-only library, you can just copy the headers to your project:
+
+```bash
+cp -r include/echo/echo.hpp /path/to/your/project/include/echo.hpp
+```
+
+or 
+
+```cpp
+#include <echo/echo.hpp>     // this file onlye has the basic terminal/console logging
+```
+
+However, there are more cool things you can include if you want more features:
+
+```cpp
+#include <echo/widget.hpp>   // Widgets (banners, boxes, headers, etc.)
+#include <echo/format.hpp>   // Sring formatting (concatenation, interpolation)
+#include <echo/log.hpp>      // File level logging
+```
+
+If you want all the features, you can include the top-level `echo.hpp` file:
+```cpp
+#include <echo.hpp>
+```
+
 
 ## Installation
 
@@ -484,13 +512,13 @@ workflow.set_color("#00FF00");
 
 int main() {
     echo::banner("FILE PROCESSOR", echo::BoxStyle::Double, "#00FFFF");
-    
+
     echo::steps workflow({"Initialize", "Scan Files", "Process", "Complete"});
-    
+
     workflow.next();
     echo::info("Loading configuration...");
     workflow.complete();
-    
+
     workflow.next();
     echo::spinner scan(echo::spinner_style::aesthetic);
     scan.set_message("Scanning directory...");
@@ -501,7 +529,7 @@ int main() {
     }
     scan.stop("Found 1,234 files");
     workflow.complete();
-    
+
     workflow.next();
     echo::progress_bar process(1234);
     process.set_prefix("Processing");
@@ -509,20 +537,20 @@ int main() {
     process.set_show_elapsed(true);
     process.set_show_remaining(true);
     process.set_show_speed(true);
-    
+
     for (int i = 0; i <= 1234; ++i) {
         process.set_progress(i);
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
     process.finish();
     workflow.complete();
-    
+
     workflow.next();
     workflow.complete();
-    
+
     echo::separator("SUCCESS", '=', "#00FF00");
     echo::info("All files processed successfully!");
-    
+
     return 0;
 }
 ```
