@@ -397,7 +397,7 @@ for (int i = 0; i < 1000000; i++) {
 }
 ```
 
-See [PERFORMANCE.md](PERFORMANCE.md) for detailed benchmarks and optimization guide.
+See [PERFORMANCE.md](misc/PERFORMANCE.md) for detailed benchmarks and optimization guide.
 
 ## Testing
 
@@ -442,4 +442,4 @@ MIT License - see [LICENSE](./LICENSE) for details.
 
 ## Acknowledgments
 
-Made possible thanks to [these amazing projects](./ACKNOWLEDGMENTS.md).
+Made possible thanks to [these amazing projects](misc/ACKNOWLEDGMENTS.md).
