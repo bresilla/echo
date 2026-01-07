@@ -44,7 +44,6 @@
 // Utilities (always included)
 #include <echo/utils/color.hpp>
 #include <echo/utils/hash.hpp>
-#include <echo/utils/string_pool.hpp>
 #include <echo/utils/terminal.hpp>
 
 // Sinks - Base and Console (always included)
