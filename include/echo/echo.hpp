@@ -60,13 +60,11 @@
 #endif
 
 #ifdef ECHO_ENABLE_SYSLOG_SINK
-// TODO: Created in task echo-1l6.3
-// #include <echo/sinks/syslog_sink.hpp>
+#include <echo/sinks/syslog_sink.hpp>
 #endif
 
 #ifdef ECHO_ENABLE_NETWORK_SINK
-// TODO: Created in task echo-1l6.3
-// #include <echo/sinks/network_sink.hpp>
+#include <echo/sinks/network_sink.hpp>
 #endif
 
 #ifdef ECHO_ENABLE_NULL_SINK
