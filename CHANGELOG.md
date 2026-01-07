@@ -1,3 +1,8 @@
+## [0.0.23] - 2026-01-07
+
+### 🐛 Bug Fixes
+
+- Correct std::format type trait misuse
 ## [0.0.22] - 2026-01-07
 
 ### 🚀 Features

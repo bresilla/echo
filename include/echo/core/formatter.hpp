@@ -72,10 +72,13 @@ namespace echo {
 
 #ifdef ECHO_HAS_STD_FORMAT
         // Type trait to check if a type is formattable with std::format
+        // We need to check if std::formatter is specialized, not just if std::format compiles
         template <typename T, typename = void> struct is_std_formattable : std::false_type {};
 
         template <typename T>
-        struct is_std_formattable<T, std::void_t<decltype(std::format("{}", std::declval<T>()))>> : std::true_type {};
+        struct is_std_formattable<
+            T, std::void_t<decltype(std::declval<std::formatter<std::remove_cvref_t<T>, char>>().format(
+                   std::declval<T>(), std::declval<std::format_context &>()))>> : std::true_type {};
 
         // Fast path: Use std::format for formattable types
         template <typename T> inline std::string format_single(const T &value) {
