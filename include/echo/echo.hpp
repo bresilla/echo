@@ -73,10 +73,9 @@
 #endif
 
 // Formatters (always included)
-// TODO: Created in task echo-1l6.5
-// #include <echo/formatters/formatter.hpp>
-// #include <echo/formatters/pattern.hpp>
-// #include <echo/formatters/custom.hpp>
+#include <echo/formatters/custom.hpp>
+#include <echo/formatters/formatter.hpp>
+#include <echo/formatters/pattern.hpp>
 
 // Filters (always included)
 // TODO: Created in task echo-1l6.7

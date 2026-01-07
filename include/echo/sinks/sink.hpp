@@ -10,6 +10,12 @@
 #include <memory>
 #include <string>
 
+// Forward declare Formatter (will be included by echo.hpp)
+namespace echo {
+    class Formatter;
+    using FormatterPtr = std::shared_ptr<Formatter>;
+} // namespace echo
+
 namespace echo {
 
     /**
@@ -77,8 +83,24 @@ namespace echo {
             return static_cast<int>(level) >= static_cast<int>(min_level_);
         }
 
+        /**
+         * @brief Set custom formatter for this sink
+         * @param formatter Shared pointer to formatter
+         *
+         * If set, the sink will use this formatter instead of the default.
+         * Pass nullptr to use default formatting.
+         */
+        virtual void set_formatter(FormatterPtr formatter) { formatter_ = formatter; }
+
+        /**
+         * @brief Get current formatter
+         * @return Shared pointer to formatter (may be nullptr)
+         */
+        [[nodiscard]] virtual FormatterPtr get_formatter() const { return formatter_; }
+
       protected:
-        Level min_level_ = Level::Trace; ///< Minimum level to log (default: log everything)
+        Level min_level_ = Level::Trace;   ///< Minimum level to log (default: log everything)
+        FormatterPtr formatter_ = nullptr; ///< Custom formatter (nullptr = use default)
     };
 
     /// Shared pointer to a sink (for easy management)
