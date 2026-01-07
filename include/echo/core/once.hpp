@@ -6,6 +6,7 @@
  */
 
 #include <echo/core/mutex.hpp>
+#include <echo/utils/hash.hpp>
 
 #include <chrono>
 #include <unordered_map>
@@ -25,16 +26,21 @@ namespace echo {
         }
 
         /**
-         * @brief Compute a hash key from file pointer and line number
-         * @note Uses pointer value directly to avoid string allocation
+         * @brief Compute a hash key from file hash and line number
+         * @param file_hash Pre-computed compile-time hash of __FILE__
+         * @param line Line number
+         * @return Combined hash key
+         *
+         * This version accepts a pre-computed hash, allowing compile-time
+         * evaluation of the file path hash for better performance.
          */
-        inline size_t make_location_key(const char *file, int line) noexcept {
-            // Combine file pointer hash with line number
-            return std::hash<const void *>{}(static_cast<const void *>(file)) ^ (static_cast<size_t>(line) << 16);
+        constexpr size_t make_location_key(uint64_t file_hash, int line) noexcept {
+            // Combine file hash with line number using hash_combine
+            return hash_combine(static_cast<size_t>(file_hash), static_cast<size_t>(line));
         }
 
-        [[nodiscard]] inline bool check_and_mark_once(const char *file, int line) {
-            size_t key = make_location_key(file, line);
+        [[nodiscard]] inline bool check_and_mark_once(uint64_t file_hash, int line) {
+            size_t key = make_location_key(file_hash, line);
             std::lock_guard<std::mutex> lock(get_log_mutex());
             if (get_once_set().count(key)) {
                 return false; // Already printed
@@ -55,8 +61,8 @@ namespace echo {
             return every_map;
         }
 
-        [[nodiscard]] inline bool check_every(const char *file, int line, int64_t interval_ms) {
-            size_t key = make_location_key(file, line);
+        [[nodiscard]] inline bool check_every(uint64_t file_hash, int line, int64_t interval_ms) {
+            size_t key = make_location_key(file_hash, line);
             auto now = std::chrono::steady_clock::now();
 
             std::lock_guard<std::mutex> lock(get_log_mutex());
@@ -88,15 +94,16 @@ namespace echo {
 /**
  * @brief Helper macro for .once() that captures file and line
  *
- * This is a workaround because we can't get __FILE__ and __LINE__ inside a method.
- * The macro intercepts the call and injects the location information.
+ * Uses compile-time hashing of __FILE__ for better performance.
+ * The file path hash is computed at compile time, reducing runtime overhead.
  */
-#define once() once_impl(__FILE__, __LINE__)
+#define once() once_impl(echo::detail::hash_string(__FILE__), __LINE__)
 
 /**
  * @brief Helper macro for .every(ms) that captures file and line
  *
+ * Uses compile-time hashing of __FILE__ for better performance.
  * Prints at most once every N milliseconds. Useful for rate-limiting logs in tight loops.
  * Usage: echo::info("Status update").every(1000)  // prints at most once per second
  */
-#define every(ms) every_impl(__FILE__, __LINE__, ms)
+#define every(ms) every_impl(echo::detail::hash_string(__FILE__), __LINE__, ms)

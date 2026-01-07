@@ -158,16 +158,16 @@ namespace echo {
         }
 
         // Print only once (internal - use ONCE macro instead)
-        log_proxy &once_impl(const char *file, int line) {
-            if (!detail::check_and_mark_once(file, line)) {
+        log_proxy &once_impl(uint64_t file_hash, int line) {
+            if (!detail::check_and_mark_once(file_hash, line)) {
                 skip_print_ = true;
             }
             return *this;
         }
 
         // Print at most every N milliseconds (internal - use EVERY macro instead)
-        log_proxy &every_impl(const char *file, int line, int64_t interval_ms) {
-            if (!detail::check_every(file, line, interval_ms)) {
+        log_proxy &every_impl(uint64_t file_hash, int line, int64_t interval_ms) {
+            if (!detail::check_every(file_hash, line, interval_ms)) {
                 skip_print_ = true;
             }
             return *this;
@@ -357,16 +357,16 @@ namespace echo {
         }
 
         // Print only once (internal - use ONCE macro instead)
-        print_proxy &once_impl(const char *file, int line) {
-            if (!detail::check_and_mark_once(file, line)) {
+        print_proxy &once_impl(uint64_t file_hash, int line) {
+            if (!detail::check_and_mark_once(file_hash, line)) {
                 skip_print_ = true;
             }
             return *this;
         }
 
         // Print at most every N milliseconds (internal - use EVERY macro instead)
-        print_proxy &every_impl(const char *file, int line, int64_t interval_ms) {
-            if (!detail::check_every(file, line, interval_ms)) {
+        print_proxy &every_impl(uint64_t file_hash, int line, int64_t interval_ms) {
+            if (!detail::check_every(file_hash, line, interval_ms)) {
                 skip_print_ = true;
             }
             return *this;
