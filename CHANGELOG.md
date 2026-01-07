@@ -1,3 +1,35 @@
+## [0.0.22] - 2026-01-07
+
+### 🚀 Features
+
+- Improve code maintainability
+- Add compile-time string hashing for .once() and .every()
+- Implement FileSink and terminal utilities
+- Implement SyslogSink and NetworkSink
+- Integrate sink system into logging API
+- Add formatter system with DefaultFormatter, PatternFormatter, and CustomFormatter
+- Implement remaining Echo library improvements
+- Add comprehensive edge case and integration tests
+- Enhance logging benchmarks
+
+### 🐛 Bug Fixes
+
+- Update fingerprint for dependency tracking
+- Eliminate TOCTOU race condition in .every() implementation
+- Add benchmarks to build system and document string pool status
+- Move ACKNOWLEDGMENTS and CHANGELOG back to root
+
+### 🚜 Refactor
+
+- Restructure Echo library to modular architecture
+- Move benchmarks and fuzz tests to examples, remove string pool
+- Organize documentation in misc/ directory
+- Remove unused old API files and legacy file logging
+
+### 📚 Documentation
+
+- Update README to reflect all new features
+- Comprehensive README rewrite reflecting all current features
 ## [0.0.21] - 2026-01-06
 
 ### 🚀 Features
