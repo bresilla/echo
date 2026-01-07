@@ -24,7 +24,7 @@
  *   - Method chaining for fluent API
  */
 
-#include <echo/color.hpp>
+#include <echo/utils/color.hpp>
 
 #include <algorithm>
 #include <cctype>

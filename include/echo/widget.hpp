@@ -61,9 +61,9 @@
  *   - Fancy headers and banners for visual organization
  */
 
-#include <echo/color.hpp>
 #include <echo/echo.hpp>
 #include <echo/format.hpp>
+#include <echo/utils/color.hpp>
 
 #include <chrono>
 #include <cstdio>

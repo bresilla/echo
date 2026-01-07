@@ -4,7 +4,7 @@
  */
 
 #define LOGLEVEL Trace
-#include <echo/color.hpp>
+#include <echo/utils/color.hpp>
 #include <echo/echo.hpp>
 
 #include <iostream>
