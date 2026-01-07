@@ -43,22 +43,20 @@
 
 // Utilities (always included)
 #include <echo/utils/color.hpp>
+#include <echo/utils/hash.hpp>
+#include <echo/utils/terminal.hpp>
 
 // TODO: These will be created in future tasks
-// #include <echo/utils/terminal.hpp>
-// #include <echo/utils/hash.hpp>
 // #include <echo/utils/string_pool.hpp>
 
 // Sinks - Base and Console (always included)
-// TODO: These will be created in task echo-1l6.1
-// #include <echo/sinks/sink.hpp>
-// #include <echo/sinks/console_sink.hpp>
-// #include <echo/sinks/registry.hpp>
+#include <echo/sinks/console_sink.hpp>
+#include <echo/sinks/registry.hpp>
+#include <echo/sinks/sink.hpp>
 
 // Optional sinks (compile-time)
 #ifdef ECHO_ENABLE_FILE_SINK
-// TODO: Created in task echo-1l6.2
-// #include <echo/sinks/file_sink.hpp>
+#include <echo/sinks/file_sink.hpp>
 #endif
 
 #ifdef ECHO_ENABLE_SYSLOG_SINK

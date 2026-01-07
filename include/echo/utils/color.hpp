@@ -15,33 +15,12 @@
 #include <string>
 #include <vector>
 
-#ifndef _WIN32
-#include <sys/ioctl.h>
-#include <unistd.h>
-#endif
-
 namespace echo {
     namespace detail {
 
-        // =================================================================================================
-        // Terminal Width Detection
-        // =================================================================================================
-
-        /**
-         * @brief Get terminal width in columns
-         * @return Terminal width (defaults to 80 if detection fails)
-         */
-        [[nodiscard]] inline int get_terminal_width() noexcept {
-#ifdef _WIN32
-            return 80; // Fallback for Windows
-#else
-            struct winsize w;
-            if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0 && w.ws_col > 0) {
-                return w.ws_col;
-            }
-            return 80; // Fallback
-#endif
-        }
+        // Forward declare get_terminal_width from terminal.hpp
+        // (will be included by echo.hpp)
+        [[nodiscard]] int get_terminal_width() noexcept;
 
         // =================================================================================================
         // Color Structure
