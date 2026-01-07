@@ -61,10 +61,11 @@ namespace echo {
 
             std::lock_guard<std::mutex> lock(get_log_mutex());
             auto &every_map = get_every_map();
-            auto it = every_map.find(key);
 
-            if (it == every_map.end()) {
-                every_map[key] = now;
+            // Use try_emplace for atomic insert-or-update (fixes TOCTOU race condition)
+            auto [it, inserted] = every_map.try_emplace(key, now);
+
+            if (inserted) {
                 return true; // First time, always print
             }
 
