@@ -8,7 +8,9 @@
     "arrow-cpp@latest",
     "rerun@latest",
     "zig@latest",
-    "xmake@latest"
+    "xmake@latest",
+    "spdlog@latest",
+    "spdlog.dev"
   ],
   "shell": {
     "init_hook": [

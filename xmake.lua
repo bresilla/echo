@@ -12,6 +12,7 @@ local LIB_DEPS = {
     -- {"datapod", "https://github.com/robolibs/datapod.git", "0.0.15"},
 }
 local EXAMPLE_DEPS = {
+    {system = "spdlog"},
     -- additional deps for examples (lib deps are auto-included)
 }
 local TEST_DEPS = {
@@ -217,7 +218,7 @@ end
 -- Examples & Tests (only when this is the main project)
 if os.projectdir() == os.curdir() then
     if has_config("examples") then
-        add_binaries("examples/*.cpp", {
+        add_binaries("examples/**.cpp", {
             packages = EXAMPLE_DEP_NAMES,
             defines = {"HAS_RERUN"}
         })
