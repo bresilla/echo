@@ -442,4 +442,4 @@ MIT License - see [LICENSE](./LICENSE) for details.
 
 ## Acknowledgments
 
-Made possible thanks to [these amazing projects](misc/ACKNOWLEDGMENTS.md).
+Made possible thanks to [these amazing projects](ACKNOWLEDGMENTS.md).
