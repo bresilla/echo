@@ -16,6 +16,13 @@
 #include <sstream>
 #include <string>
 
+// Forward declare sink registry (will be included by echo.hpp)
+namespace echo {
+    namespace detail {
+        class SinkRegistry;
+    }
+} // namespace echo
+
 namespace echo {
 
 #ifdef ECHO_LOG_ENABLED
@@ -25,6 +32,64 @@ namespace echo {
         struct file_writer_print;
     } // namespace log::detail
 #endif
+
+    namespace detail {
+        // Forward declare sink registry access
+        SinkRegistry &get_sink_registry();
+
+        // Format a log message with level, timestamp, and color
+        inline std::string format_log_message(Level level, const std::string &message, const std::string &color_code,
+                                              bool inplace) {
+            std::ostringstream oss;
+
+            // Clear line if inplace
+            if (inplace) {
+                oss << "\r\033[K"; // \r = carriage return, \033[K = clear to end of line
+            }
+
+#ifdef ECHO_ENABLE_TIMESTAMP
+            oss << "[" << get_timestamp() << "]";
+#endif
+            oss << level_color(level) << "[" << level_name(level) << "]" << RESET << " ";
+
+            if (!color_code.empty()) {
+                oss << color_code << message << RESET;
+            } else {
+                oss << message;
+            }
+
+            // Only add newline if not inplace
+            if (!inplace) {
+                oss << "\n";
+            }
+
+            return oss.str();
+        }
+
+        // Format a simple print message (no level)
+        inline std::string format_print_message(const std::string &message, const std::string &color_code,
+                                                bool inplace) {
+            std::ostringstream oss;
+
+            // Clear line if inplace
+            if (inplace) {
+                oss << "\r\033[K"; // \r = carriage return, \033[K = clear to end of line
+            }
+
+            if (!color_code.empty()) {
+                oss << color_code << message << RESET;
+            } else {
+                oss << message;
+            }
+
+            // Only add newline if not inplace
+            if (!inplace) {
+                oss << "\n";
+            }
+
+            return oss.str();
+        }
+    } // namespace detail
 
     // =================================================================================================
     // Fluent logging interface with color support
@@ -193,44 +258,7 @@ namespace echo {
 #endif
 
         // Destructor performs the actual logging
-        ~log_proxy() {
-            // Check if we should skip printing (e.g., from .once())
-            if (skip_print_) {
-                return;
-            }
-
-            if constexpr (static_cast<int>(L) >= static_cast<int>(detail::ACTIVE_LEVEL)) {
-                // Runtime level check
-                if (static_cast<int>(L) < static_cast<int>(detail::get_effective_level())) {
-                    return;
-                }
-
-                std::lock_guard<std::mutex> lock(detail::get_log_mutex());
-                std::ostream &out = (L >= Level::Error) ? std::cerr : std::cout;
-
-                // Clear line if inplace
-                if (inplace_) {
-                    out << "\r\033[K"; // \r = carriage return, \033[K = clear to end of line
-                }
-
-#ifdef ECHO_ENABLE_TIMESTAMP
-                out << "[" << detail::get_timestamp() << "]";
-#endif
-                out << detail::level_color(L) << "[" << detail::level_name(L) << "]" << detail::RESET << " ";
-
-                if (!color_code_.empty()) {
-                    out << color_code_ << message_ << detail::RESET;
-                } else {
-                    out << message_;
-                }
-
-                // Only add newline if not inplace
-                if (!inplace_) {
-                    out << "\n";
-                }
-                out << std::flush; // Always flush for inplace to work
-            }
-        }
+        ~log_proxy(); // Defined after SinkRegistry is complete
     };
 
     // =================================================================================================
@@ -392,31 +420,7 @@ namespace echo {
 #endif
 
         // Destructor performs the actual printing
-        ~print_proxy() {
-            // Check if we should skip printing (e.g., from .once())
-            if (skip_print_) {
-                return;
-            }
-
-            std::lock_guard<std::mutex> lock(detail::get_log_mutex());
-
-            // Clear line if inplace
-            if (inplace_) {
-                std::cout << "\r\033[K"; // \r = carriage return, \033[K = clear to end of line
-            }
-
-            if (!color_code_.empty()) {
-                std::cout << color_code_ << message_ << detail::RESET;
-            } else {
-                std::cout << message_;
-            }
-
-            // Only add newline if not inplace
-            if (!inplace_) {
-                std::cout << "\n";
-            }
-            std::cout << std::flush; // Always flush for inplace to work
-        }
+        ~print_proxy(); // Defined after SinkRegistry is complete
     };
 
     // =================================================================================================
@@ -458,6 +462,79 @@ namespace echo {
      * Usage (global): ::echo("message").red()
      */
     template <typename... Args> inline print_proxy print(const Args &...args) { return print_proxy(args...); }
+
+    // =================================================================================================
+    // Proxy destructor implementations (defined here to allow sink registry inclusion)
+    // =================================================================================================
+
+    // These will be implemented after SinkRegistry is included (in registry.hpp)
+    // For now, provide inline implementations that will be used if sinks are not included
+
+    namespace detail {
+        // Function pointers for sink writing (will be set by registry.hpp)
+        using SinkWriterFunc = void (*)(Level, const std::string &);
+        using PrintWriterFunc = void (*)(const std::string &);
+
+        // Fallback implementations
+        inline void fallback_write_to_sinks(Level level, const std::string &formatted_message) {
+            // Fallback: write directly to stdout/stderr if no sinks are available
+            std::ostream &out = (level >= Level::Error) ? std::cerr : std::cout;
+            out << formatted_message << std::flush;
+        }
+
+        inline void fallback_write_print_to_sinks(const std::string &formatted_message) {
+            // Fallback: write directly to stdout if no sinks are available
+            std::cout << formatted_message << std::flush;
+        }
+
+        // Function pointers (initialized to fallback, will be overridden by registry.hpp)
+        inline SinkWriterFunc &get_sink_writer() {
+            static SinkWriterFunc writer = fallback_write_to_sinks;
+            return writer;
+        }
+
+        inline PrintWriterFunc &get_print_writer() {
+            static PrintWriterFunc writer = fallback_write_print_to_sinks;
+            return writer;
+        }
+    } // namespace detail
+
+    // log_proxy destructor implementation
+    template <Level L> inline log_proxy<L>::~log_proxy() {
+        // Check if we should skip printing (e.g., from .once())
+        if (skip_print_) {
+            return;
+        }
+
+        if constexpr (static_cast<int>(L) >= static_cast<int>(detail::ACTIVE_LEVEL)) {
+            // Runtime level check
+            if (static_cast<int>(L) < static_cast<int>(detail::get_effective_level())) {
+                return;
+            }
+
+            // Format the message once
+            std::string formatted = detail::format_log_message(L, message_, color_code_, inplace_);
+
+            // Write to all registered sinks (thread-safe)
+            std::lock_guard<std::mutex> lock(detail::get_log_mutex());
+            detail::get_sink_writer()(L, formatted);
+        }
+    }
+
+    // print_proxy destructor implementation
+    inline print_proxy::~print_proxy() {
+        // Check if we should skip printing (e.g., from .once())
+        if (skip_print_) {
+            return;
+        }
+
+        // Format the message once
+        std::string formatted = detail::format_print_message(message_, color_code_, inplace_);
+
+        // Write to all registered sinks (thread-safe)
+        std::lock_guard<std::mutex> lock(detail::get_log_mutex());
+        detail::get_print_writer()(formatted);
+    }
 
     // =================================================================================================
     // File logging support (only when log.hpp is included)

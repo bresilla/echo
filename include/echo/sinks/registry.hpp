@@ -5,16 +5,25 @@
  * @brief Sink registry for managing multiple output destinations
  */
 
+#include <echo/core/level.hpp>
 #include <echo/core/mutex.hpp>
+#include <echo/sinks/console_sink.hpp>
 #include <echo/sinks/sink.hpp>
 
 #include <algorithm>
+#include <memory>
 #include <mutex>
+#include <string>
 #include <vector>
 
 namespace echo {
 
     namespace detail {
+        // Forward declarations from proxy.hpp
+        using SinkWriterFunc = void (*)(Level, const std::string &);
+        using PrintWriterFunc = void (*)(const std::string &);
+        SinkWriterFunc &get_sink_writer();
+        PrintWriterFunc &get_print_writer();
 
         /**
          * @brief Global sink registry
@@ -25,6 +34,20 @@ namespace echo {
           private:
             std::vector<SinkPtr> sinks_;
             mutable std::mutex mutex_;
+            bool initialized_ = false;
+
+            /**
+             * @brief Initialize default ConsoleSink if no sinks are registered
+             */
+            void ensure_default_sink() {
+                if (!initialized_) {
+                    initialized_ = true;
+                    if (sinks_.empty()) {
+                        // Add default ConsoleSink
+                        sinks_.push_back(std::make_shared<ConsoleSink>());
+                    }
+                }
+            }
 
           public:
             /**
@@ -72,6 +95,7 @@ namespace echo {
              */
             void write_all(Level level, const std::string &message) {
                 std::lock_guard<std::mutex> lock(mutex_);
+                ensure_default_sink();
                 for (auto &sink : sinks_) {
                     if (sink && sink->should_log(level)) {
                         sink->write(level, message);
@@ -150,5 +174,35 @@ namespace echo {
      * @return Number of sinks
      */
     [[nodiscard]] inline size_t sink_count() { return detail::SinkRegistry::instance().count(); }
+
+    // =================================================================================================
+    // Set up sink writers for proxy.hpp
+    // =================================================================================================
+
+    namespace detail {
+        // Actual sink writer implementations
+        inline void registry_write_to_sinks(Level level, const std::string &formatted_message) {
+            SinkRegistry::instance().write_all(level, formatted_message);
+        }
+
+        inline void registry_write_print_to_sinks(const std::string &formatted_message) {
+            // For print messages, use Info level
+            SinkRegistry::instance().write_all(Level::Info, formatted_message);
+        }
+
+        // Initialize the function pointers (called automatically via static initialization)
+        struct SinkWriterInitializer {
+            SinkWriterInitializer() {
+                get_sink_writer() = registry_write_to_sinks;
+                get_print_writer() = registry_write_print_to_sinks;
+            }
+        };
+
+        // Static initializer - runs before main()
+        static SinkWriterInitializer sink_writer_init;
+
+        // Provide access to sink registry
+        inline SinkRegistry &get_sink_registry() { return SinkRegistry::instance(); }
+    } // namespace detail
 
 } // namespace echo
