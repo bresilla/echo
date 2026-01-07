@@ -1,29 +1,29 @@
 # Echo
 
-**A modern C++20+ header-only logging library with visual elements and progress indicators.**
+**A modern C++20 logging library with modular architecture, rich formatting, visual widgets, and zero-overhead performance.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
-[![Header-Only](https://img.shields.io/badge/header--only-yes-green.svg)](https://github.com/robolibs/echo)
+[![Version](https://img.shields.io/badge/version-0.0.21-blue.svg)](https://github.com/robolibs/echo)
 
-## Features
+## Overview
 
-- **Header-only** - Just include and use, no linking required
-- **Fluent interface** - Chain colors and modifiers: `.red().bold().italic()`
-- **Simple echo()** - Print without log levels: `echo("text").cyan()`
-- **Print once** - `.once()` for loop-safe logging
-- **Colored output** - Named colors, HEX (#FF5733), RGB (255,87,51), gradients
-- **Progress bars** - 6 visual styles, auto-sizing, byte/speed formatting, themes
-- **Visual elements** - Boxes, banners, separators with Unicode art
-- **Zero overhead** - Compile-time log levels eliminate runtime cost (literally 0ns!)
-- **Thread-safe** - Concurrent logging without corruption
-- **Flexible log levels** - LOGLEVEL/ECHOLEVEL via compile-time, environment, or runtime
-- **No dependencies** - Standard library only
+Echo is a high-performance, header-mostly logging library designed for modern C++20 applications. It combines powerful logging capabilities with rich terminal UI widgets, providing everything from simple console output to sophisticated multi-sink logging with custom formatters, category filtering, and visual progress indicators.
+
+**Key Features:**
+- **Zero overhead** - Compile-time log filtering eliminates runtime cost (literally 0ns!)
+- **Modular architecture** - Enable only the sinks you need via compile-time flags
+- **Performance first** - 17M+ ops/sec for filtered logs, 3-4M ops/sec for active logging
+- **Rich formatting** - Pattern formatters, custom formatters, color support
+- **Visual widgets** - Progress bars, spinners, banners, boxes with themes
+- **Developer friendly** - Fluent API, category filtering, thread-safe
+
+Echo is built for applications that demand both flexibility and performance, from embedded systems to high-throughput servers.
 
 ## Quick Start
 
 ```cpp
-#include <echo.hpp>
+#include <echo/echo.hpp>
 
 int main() {
     // Simple printing (no log levels)
@@ -31,7 +31,7 @@ int main() {
     echo("Colored text").red().bold();
 
     // Logging with levels
-    echo::info("Hello, world!");
+    echo::info("Application started");
     echo::debug("Value: ", 42);
     echo::error("Something went wrong!").red();
 
@@ -49,519 +49,512 @@ int main() {
 }
 ```
 
-## Header-Only
+## Architecture
 
-Since this is a header-only library, you can just copy the headers to your project:
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                            ECHO LIBRARY                                  │
+├──────────────┬──────────────┬──────────────┬──────────────┬─────────────┤
+│     Core     │    Sinks     │  Formatters  │   Filters    │   Utils     │
+│              │              │              │              │             │
+│  ┌────────┐  │  ┌────────┐  │  ┌────────┐  │  ┌────────┐  │ ┌────────┐ │
+│  │ Proxy  │  │  │Console │  │  │Pattern │  │  │Category│  │ │ Color  │ │
+│  │ Level  │  │  │  File  │  │  │ Custom │  │  │  Level │  │ │Terminal│ │
+│  │ Mutex  │  │  │Syslog* │  │  │Default │  │  │        │  │ │  Hash  │ │
+│  │  Once  │  │  │Network*│  │  │        │  │  │        │  │ │        │ │
+│  │  Time  │  │  │ Null*  │  │  │        │  │  │        │  │ │        │ │
+│  └────────┘  │  └────────┘  │  └────────┘  │  └────────┘  │ └────────┘ │
+│              │              │              │              │             │
+└──────────────┴──────────────┴──────────────┴──────────────┴─────────────┘
+       │               │               │              │              │
+       └───────────────┴───────────────┴──────────────┴──────────────┘
+                                    │
+                            ┌───────▼────────┐
+                            │   Your App     │
+                            └────────────────┘
 
-```bash
-cp -r include/echo/echo.hpp /path/to/your/project/include/echo.hpp
+* Optional sinks (compile-time flags)
 ```
 
-or 
-
-```cpp
-#include <echo/echo.hpp>     // this file onlye has the basic terminal/console logging
+**Data Flow:**
 ```
-
-However, there are more cool things you can include if you want more features:
-
-```cpp
-#include <echo/widget.hpp>   // Widgets (banners, boxes, headers, etc.)
-#include <echo/format.hpp>   // Sring formatting (concatenation, interpolation)
-#include <echo/log.hpp>      // File level logging
+Log Call → Compile-Time Filter → Runtime Filter → Category Filter
+    ↓
+Format Message → Formatter (Pattern/Custom/Default)
+    ↓
+Sink Registry → [ConsoleSink, FileSink*, SyslogSink*, NetworkSink*, NullSink*]
+    ↓
+Output (stdout/stderr, file, syslog, network, /dev/null)
 ```
-
-If you want all the features, you can include the top-level `echo.hpp` file:
-```cpp
-#include <echo.hpp>
-```
-
 
 ## Installation
 
-### Header-Only
-
-Copy the headers to your project:
-
-```bash
-cp -r include/echo /path/to/your/project/include/
-```
-
-### CMake
+### CMake FetchContent
 
 ```cmake
 include(FetchContent)
 FetchContent_Declare(
-    echo
-    GIT_REPOSITORY https://github.com/robolibs/echo.git
-    GIT_TAG main
+  echo
+  GIT_REPOSITORY https://github.com/robolibs/echo.git
+  GIT_TAG v0.0.21
 )
 FetchContent_MakeAvailable(echo)
-target_link_libraries(your_target echo::echo)
+
+target_link_libraries(your_target PRIVATE echo::echo)
 ```
 
-## Core Logging
+### XMake
 
-### Simple Echo (No Log Levels)
+```lua
+add_requires("echo")
 
-Print without log level filtering - always shows, no `[level]` prefix:
-
-```cpp
-echo("Simple message");
-echo("Colored text").red();
-echo("Custom color").hex("#FF5733");
-echo("RGB color").rgb(255, 165, 0);
-echo("Bold and italic").bold().italic();
+target("your_target")
+    set_kind("binary")
+    add_packages("echo")
+    add_files("src/*.cpp")
 ```
 
-### Log Levels
+### Manual Installation
 
-Logging with levels - shows `[level]` prefix (bold by default), respects log level filtering:
-
-```cpp
-echo::trace("Detailed trace information");    // Level 0 - Most verbose
-echo::debug("Debug information");              // Level 1
-echo::info("General information");             // Level 2 - Default
-echo::warn("Warning message");                 // Level 3
-echo::error("Error occurred");                 // Level 4
-echo::critical("Critical failure!");           // Level 5 - Least verbose
-```
-
-**All level labels are bold by default for better visibility!**
-
-### Multiple Arguments
-
-```cpp
-echo::info("User: ", username, " logged in at ", timestamp);
-echo::debug("Position: x=", x, " y=", y, " z=", z);
-echo("Simple: ", value1, " and ", value2);
-```
-
-### Fluent Interface with Colors
-
-Chain colors and text modifiers on any log statement:
-
-```cpp
-// Named colors
-echo::info("Red text").red();
-echo::warn("Green warning").green();
-echo::error("Blue error").blue();
-
-// Available colors: .red(), .green(), .blue(), .yellow(), .cyan(), 
-//                   .magenta(), .white(), .gray()
-
-// Custom HEX colors
-echo::info("Custom color").hex("#FF1493");
-echo::warn("Another color").hex("00FFFF");  // # is optional
-
-// Custom RGB colors
-echo::info("RGB color").rgb(255, 87, 51);
-echo::error("Another RGB").rgb(0, 255, 128);
-
-// Text modifiers
-echo::info("Bold text").bold();
-echo::info("Italic text").italic();
-echo::info("Underlined text").underline();
-
-// Chain everything together!
-echo::info("All combined").red().bold().italic().underline();
-echo::warn("Custom styled").hex("#FF00FF").bold();
-echo("Simple echo styled").cyan().italic();
-```
-
-### Print Once (Loop-Safe Logging)
-
-Print a message only once, even in loops - perfect for avoiding log spam:
-
-```cpp
-// Prints only on first iteration
-for (int i = 0; i < 1000; i++) {
-    echo::info("Loop started").once();
-    echo::warn("Warning in loop").red().once();
-}
-
-// Each unique location prints once
-for (int i = 0; i < 100; i++) {
-    echo::info("First message").once();   // Prints once
-    echo::warn("Second message").once();  // Also prints once
-}
-
-// Works with all features
-for (int i = 0; i < 1000; i++) {
-    echo::error("Styled once").hex("#FF0000").bold().once();
-    echo("Simple once").cyan().once();
-}
-```
-
-**How it works:** `.once()` uses `__FILE__` and `__LINE__` to track unique code locations. Each call site prints only once, ever.
-
-### Log Level Control
-
-**Priority order (highest to lowest):**
-1. Runtime API: `echo::set_level(echo::Level::Debug)`
-2. Environment variable: `LOGLEVEL=Debug` or `ECHOLEVEL=Trace`
-3. In-file define: `#define LOGLEVEL Debug`
-4. Build system: `-DLOGLEVEL=Error`
-
-#### Compile-Time Control (Zero Overhead!)
-
-When you set a compile-time level, filtered logs are **completely removed** from the binary:
-
-```cpp
-#define LOGLEVEL Error  // or ECHOLEVEL Error
-#include <echo/echo.hpp>
-
-echo::trace("Removed from binary!");  // 0 ns overhead - doesn't exist!
-echo::debug("Removed from binary!");  // 0 ns overhead - doesn't exist!
-echo::info("Removed from binary!");   // 0 ns overhead - doesn't exist!
-echo::warn("Removed from binary!");   // 0 ns overhead - doesn't exist!
-echo::error("This exists");           // Only this code exists in binary
-```
-
-**Build system:**
 ```bash
-# Makefile
-make build LOGLEVEL=Error
-make build ECHOLEVEL=Debug
+git clone https://github.com/robolibs/echo.git
+cd echo
 
+# Using Make (auto-detects cmake/xmake)
+make config
+make build
+make test
+
+# Or directly with CMake
+mkdir build && cd build
+cmake -DECHO_BUILD_EXAMPLES=ON -DECHO_ENABLE_TESTS=ON ..
+make -j$(nproc)
+ctest
+
+# Or with XMake
+xmake f --examples=y --tests=y
+xmake
+xmake test
+```
+
+## Core Features
+
+### 1. Log Levels
+
+Six log levels with compile-time and runtime filtering:
+
+```cpp
+echo::trace("Detailed trace information");
+echo::debug("Debug information");
+echo::info("Informational message");
+echo::warn("Warning message");
+echo::error("Error message");
+echo::critical("Critical error");
+```
+
+**Compile-time filtering** (zero overhead):
+```bash
 # CMake
 cmake -DLOGLEVEL=Error ..
-cmake -DECHOLEVEL=Debug ..
 
-# Direct compilation
-g++ -DLOGLEVEL=Error myapp.cpp
+# XMake
+xmake f -c -DLOGLEVEL=Error
+
+# Result: trace/debug/info/warn calls are completely removed from binary
 ```
 
-**Both LOGLEVEL and ECHOLEVEL are supported. LOGLEVEL takes precedence if both are set.**
-
-Available levels: `Trace`, `Debug`, `Info`, `Warn`, `Error`, `Critical`, `Off`
-
-#### Environment Variable Control
-
-When **no** compile-time level is set, you can use environment variables:
-
-```bash
-# Set log level via environment
-LOGLEVEL=Debug ./myapp
-ECHOLEVEL=Trace ./myapp
-
-# LOGLEVEL takes precedence
-LOGLEVEL=Error ECHOLEVEL=Debug ./myapp  # Uses Error
+**Runtime filtering**:
+```cpp
+echo::set_level(echo::Level::Warn);  // Only Warn and above
 ```
 
-**Note:** Environment variables are ignored if a compile-time level is set (to preserve zero-overhead optimization).
+### 2. Fluent Interface with Colors
 
-#### Runtime Control
+Chain colors, styles, and modifiers:
 
 ```cpp
-echo::set_level(echo::Level::Warn);
-echo::info("Hidden");
-echo::error("Visible");
+// Standard colors
+echo::info("Message").red().bold();
+echo::warn("Warning").yellow().italic();
 
-auto current = echo::get_level();
+// Custom colors
+echo::info("HEX color").hex("#FF1493");
+echo::error("RGB color").rgb(255, 87, 51);
+
+// Multiple modifiers
+echo::critical("Alert!").red().bold().underline();
 ```
 
-### Timestamps
+**Available colors**: red, green, yellow, blue, magenta, cyan, white, gray
+
+**Available styles**: bold, italic, underline
+
+### 3. Rate Limiting & Conditional Logging
 
 ```cpp
-#define ECHO_ENABLE_TIMESTAMP
+// Print only once (useful in loops)
+for (int i = 0; i < 1000000; i++) {
+    echo::warn("This prints only once!").once();
+}
+
+// Rate-limited printing (every N milliseconds)
+for (int i = 0; i < 1000000; i++) {
+    echo::info("Prints every 1 second").every(1000);
+}
+
+// Conditional printing
+bool debug_mode = true;
+echo::debug("Debug info").when(debug_mode);
+```
+
+### 4. In-place Updates
+
+Perfect for progress indicators and status updates:
+
+```cpp
+for (int i = 0; i <= 100; i++) {
+    echo("Progress: ", i, "%").inplace();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+echo("\n");  // Move to next line when done
+```
+
+### 5. Multiple Sinks
+
+Route logs to multiple destinations simultaneously:
+
+```cpp
+#define ECHO_ENABLE_FILE_SINK
+#define ECHO_ENABLE_SYSLOG_SINK
 #include <echo/echo.hpp>
 
-echo::info("Message with timestamp");
-// Output: [14:30:45][info] Message with timestamp
-```
-
-### Structured Logging
-
-```cpp
-echo::info("User login: ", echo::kv("user", "alice", "age", 30, "role", "admin"));
-// Output: [info] User login: user=alice age=30 role=admin
-```
-
-### Custom Types
-
-```cpp
-struct Point {
-    int x, y;
-    std::string pretty() const {
-        return "Point { x: " + std::to_string(x) + ", y: " + std::to_string(y) + " }";
-    }
-};
-
-Point p{10, 20};
-echo::info("Position: ", p);
-```
-
-## Visual Elements (banner.hpp)
-
-```cpp
-#include <echo/banner.hpp>
-```
-
-### Separators
-
-Auto-sizing separators that adapt to terminal width:
-
-```cpp
-echo::separator();
-echo::separator("Section 1");
-echo::separator("IMPORTANT", '=');
-
-// With colors
-echo::separator("Success", '-', "#00FF00");
-echo::separator("Warning", '=', {"#FF0000", "#FFFF00"});
-```
-
-### Boxes
-
-Six box styles:
-
-```cpp
-echo::box("Hello World");                    // Single line
-echo::box("Title", echo::BoxStyle::Double);  // Double line
-echo::box("Info", echo::BoxStyle::Rounded);  // Rounded corners
-echo::box("Alert", echo::BoxStyle::Heavy);   // Heavy/bold lines
-echo::box("Note", echo::BoxStyle::Dashed);   // Dashed lines
-echo::box("Plain", echo::BoxStyle::ASCII);   // ASCII compatible
-
-// With colors
-echo::box("Success", echo::BoxStyle::Double, "#00FF00");
-echo::box("Fire", echo::BoxStyle::Heavy, {"#FF0000", "#FF7F00", "#FFFF00"});
-```
-
-Output:
-```
-┌─────────────┐
-│ Hello World │
-└─────────────┘
-
-╔═══════╗
-║ Title ║
-╚═══════╝
-```
-
-### Headers and Banners
-
-```cpp
-echo::header("Application Started");
-echo::title("My Application");
-echo::banner("WELCOME");
-
-// With colors
-echo::header("Welcome", "#00FFFF");
-echo::banner("READY", echo::BoxStyle::Heavy, "#00FF00");
-```
-
-## Progress Bars (wait.hpp)
-
-```cpp
-#include <echo/wait.hpp>
-```
-
-### Basic Usage
-
-```cpp
-echo::progress_bar bar(100);
-bar.set_prefix("Loading");
-for (int i = 0; i <= 100; ++i) {
-    bar.tick();
-}
-bar.finish();
-```
-
-### Bar Styles
-
-Six visual styles:
-
-```cpp
-bar.set_bar_style(echo::BarStyle::Classic);  // [===>                    ]
-bar.set_bar_style(echo::BarStyle::Blocks);   // [███▓▒░░░░░░░░░░░░░░░░░░]
-bar.set_bar_style(echo::BarStyle::Smooth);   // [████████▌░░░░░░░░░░░░░░]
-bar.set_bar_style(echo::BarStyle::Arrows);   // [→→→→⇒                   ]
-bar.set_bar_style(echo::BarStyle::Dots);     // [●●●●◉○○○○○○○○○○○○○○○○○○]
-bar.set_bar_style(echo::BarStyle::ASCII);    // [###>...................]
-```
-
-### Pre-configured Themes
-
-Eleven themes combining style and colors:
-
-```cpp
-bar.set_theme(echo::BarTheme::fire());     // Red to yellow gradient
-bar.set_theme(echo::BarTheme::ocean());    // Blue gradient
-bar.set_theme(echo::BarTheme::forest());   // Green gradient
-bar.set_theme(echo::BarTheme::sunset());   // Orange to gold gradient
-bar.set_theme(echo::BarTheme::neon());     // Magenta/cyan/yellow
-```
-
-### Auto-Sizing
-
-Progress bars automatically adapt to terminal width:
-
-```cpp
-// No set_bar_width() call = auto-sizing
-echo::progress_bar bar(100);
-bar.set_prefix("Download");
-bar.set_bar_style(echo::BarStyle::Smooth);
-bar.set_gradient({"#00FF00", "#FFFF00", "#FF0000"});
-```
-
-The bar intelligently calculates available space after accounting for prefix, percentage, time, and speed displays.
-
-### Byte Formatting
-
-Display file sizes with automatic unit conversion:
-
-```cpp
-const size_t total_bytes = 50 * 1024 * 1024;  // 50 MB
-const size_t chunk_size = 512 * 1024;         // 512 KB
-const size_t total_chunks = total_bytes / chunk_size;
-
-echo::progress_bar download(total_chunks);
-download.set_prefix("Download");
-download.set_show_bytes(true, chunk_size);
-download.set_show_speed(true);
-download.set_show_elapsed(true);
-download.set_bar_style(echo::BarStyle::Smooth);
-download.set_gradient({"#00FF00", "#FFFF00", "#FF0000"});
-```
-
-Output:
-```
-Download [████████████████████] 25.0 MB / 50.0 MB [5s, 5.0 MB/s]
-```
-
-### Time and Speed Tracking
-
-```cpp
-bar.set_show_elapsed(true);     // Show elapsed time
-bar.set_show_remaining(true);   // Show estimated remaining time
-bar.set_show_speed(true);       // Show transfer speed
-```
-
-Output:
-```
-Processing [████████████░░░░░░░░] 60% [1m30s < 1m0s, 1.2 MB/s]
-```
-
-### Colors and Gradients
-
-```cpp
-// Single color
-bar.set_color("#00FFFF");
-
-// Gradient (smooth color transition)
-bar.set_gradient({"#00FF00", "#FFFF00", "#FF0000"});
-```
-
-### Custom Width
-
-Override auto-sizing with a fixed width:
-
-```cpp
-bar.set_bar_width(40);
-```
-
-## Spinners
-
-Fifteen animated spinner styles:
-
-```cpp
-echo::spinner spin(echo::spinner_style::aesthetic);
-spin.set_message("Processing...");
-
-while (processing) {
-    spin.tick();
-    std::this_thread::sleep_for(std::chrono::milliseconds(spin.get_interval_ms()));
-}
-spin.stop("Done!");
-```
-
-Available styles: `line`, `pipe`, `simple_dots`, `dots_scrolling`, `flip`, `toggle`, `layer`, `point`, `dqpb`, `bouncing_bar`, `bouncing_ball`, `aesthetic`, `binary`, `grow_vertical`, `grow_horizontal`
-
-With colors:
-```cpp
-spin.set_color("#FF00FF");
-spin.set_gradient({"#FF0000", "#00FF00", "#0000FF"});
-```
-
-## Step Indicators
-
-Track multi-step workflows:
-
-```cpp
-echo::steps workflow({"Initialize", "Load", "Process", "Save"});
-workflow.next();      // Step 1/4: Initialize
-workflow.complete();  // ✓ Initialize - Complete
-workflow.next();
-workflow.complete();
-
-// Handle failures
-workflow.next();
-workflow.fail();  // ✗ Process - Failed
-
-// With colors
-workflow.set_color("#00FF00");
-```
-
-## Complete Example
-
-```cpp
-#include <echo/banner.hpp>
-#include <echo/wait.hpp>
-
 int main() {
-    echo::banner("FILE PROCESSOR", echo::BoxStyle::Double, "#00FFFF");
+    // Clear default console sink
+    echo::clear_sinks();
 
-    echo::steps workflow({"Initialize", "Scan Files", "Process", "Complete"});
+    // Add console sink with custom level
+    auto console = std::make_shared<echo::ConsoleSink>();
+    console->set_level(echo::Level::Info);
+    echo::add_sink(console);
 
-    workflow.next();
-    echo::info("Loading configuration...");
-    workflow.complete();
+    // Add file sink with rotation
+    auto file = std::make_shared<echo::FileSink>("app.log");
+    file->enable_rotation(5 * 1024 * 1024, 3);  // 5MB, keep 3 files
+    echo::add_sink(file);
 
-    workflow.next();
-    echo::spinner scan(echo::spinner_style::aesthetic);
-    scan.set_message("Scanning directory...");
-    scan.set_color("#FFFF00");
-    for (int i = 0; i < 30; ++i) {
-        scan.tick();
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
-    scan.stop("Found 1,234 files");
-    workflow.complete();
+    // Add syslog sink (Unix only)
+    auto syslog = std::make_shared<echo::SyslogSink>("myapp");
+    echo::add_sink(syslog);
 
-    workflow.next();
-    echo::progress_bar process(1234);
-    process.set_prefix("Processing");
-    process.set_theme(echo::BarTheme::ocean());
-    process.set_show_elapsed(true);
-    process.set_show_remaining(true);
-    process.set_show_speed(true);
-
-    for (int i = 0; i <= 1234; ++i) {
-        process.set_progress(i);
-        std::this_thread::sleep_for(std::chrono::milliseconds(2));
-    }
-    process.finish();
-    workflow.complete();
-
-    workflow.next();
-    workflow.complete();
-
-    echo::separator("SUCCESS", '=', "#00FF00");
-    echo::info("All files processed successfully!");
+    // Logs go to all sinks
+    echo::info("Application started");
+    echo::error("Error logged to console, file, and syslog");
 
     return 0;
 }
 ```
 
+**Available sinks:**
+- **ConsoleSink** - Always available (stdout/stderr)
+- **FileSink** - File logging with rotation (`-DECHO_ENABLE_FILE_SINK`)
+- **SyslogSink** - Unix syslog integration (`-DECHO_ENABLE_SYSLOG_SINK`)
+- **NetworkSink** - TCP/UDP logging (`-DECHO_ENABLE_NETWORK_SINK`)
+- **NullSink** - Discard output (`-DECHO_ENABLE_NULL_SINK`)
+
+### 6. Custom Formatters
+
+Three formatter types for maximum flexibility:
+
+**DefaultFormatter** - Simple timestamp + level:
+```cpp
+auto formatter = std::make_shared<echo::DefaultFormatter>(true, true);
+// Output: [14:30:45][info] Message
+```
+
+**PatternFormatter** - Customizable patterns:
+```cpp
+auto formatter = std::make_shared<echo::PatternFormatter>(
+    "[{timestamp}] [{level}] {file}:{line} - {message}"
+);
+echo::set_global_formatter(formatter);
+// Output: [2026-01-08 14:30:45] [INFO] main.cpp:42 - Message
+```
+
+**Pattern placeholders:**
+- `{timestamp}` or `{time}` - Timestamp
+- `{level}` - Log level
+- `{message}` or `{msg}` - Log message
+- `{file}` - Source file
+- `{line}` - Line number
+- `{function}` or `{func}` - Function name
+- `{thread}` - Thread ID
+
+**CustomFormatter** - Lambda-based:
+```cpp
+auto json_formatter = std::make_shared<echo::CustomFormatter>(
+    [](const echo::LogRecord& rec) {
+        return "{\"time\":\"" + rec.timestamp + 
+               "\",\"level\":\"" + std::string(echo::detail::level_name(rec.level)) + 
+               "\",\"msg\":\"" + rec.message + "\"}";
+    }
+);
+```
+
+### 7. Category-Based Filtering
+
+Hierarchical category system with wildcard support:
+
+```cpp
+// Set category-specific log levels
+echo::set_category_level("network", echo::Level::Debug);
+echo::set_category_level("database", echo::Level::Warn);
+echo::set_category_level("app.*", echo::Level::Info);  // Wildcard
+
+// Log with categories
+echo::category("network").debug("TCP connection established");
+echo::category("network").info("Received 1024 bytes");
+
+echo::category("database").debug("Query executed");  // Filtered (< Warn)
+echo::category("database").warn("Slow query detected");  // Logged
+
+echo::category("app.auth").info("User logged in");  // Matches app.*
+echo::category("app.api").error("Request failed");
+```
+
+**Hierarchical matching:**
+```
+Category: "app.network.tcp"
+Search order:
+1. "app.network.tcp" (exact match)
+2. "app.network.*" (parent wildcard)
+3. "app.*" (grandparent wildcard)
+4. Global level (fallback)
+```
+
+## Visual Widgets
+
+### Progress Bars
+
+Rich progress bars with themes, time tracking, and byte formatting:
+
+```cpp
+#include <echo/widget.hpp>
+
+// Basic progress bar
+echo::progress_bar bar(100);
+for (int i = 0; i <= 100; ++i) {
+    bar.set_progress(i);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+bar.finish();
+
+// Themed progress bar with time and speed
+echo::progress_bar download(1024 * 1024 * 100);  // 100MB
+download.set_theme(echo::BarTheme::ocean());
+download.set_show_elapsed(true);
+download.set_show_remaining(true);
+download.set_show_bytes(true, 1024);  // Show as KB/MB/GB
+download.set_show_speed(true);
+
+for (size_t i = 0; i <= 1024 * 1024 * 100; i += 1024 * 100) {
+    download.set_progress(i);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+}
+download.finish();
+```
+
+**6 Bar Styles:**
+- Classic: `[===>    ]`
+- Blocks: `[███▓▒░  ]`
+- Smooth: `[████▌   ]`
+- Arrows: `[→→→→    ]`
+- Dots: `[●●●●○○○○]`
+- ASCII: `[###>... ]`
+
+**5 Pre-configured Themes:**
+- fire() - Red-orange-yellow gradient
+- ocean() - Dark blue to cyan
+- forest() - Dark green to light green
+- sunset() - Orange-red-gold
+- neon() - Magenta-cyan-yellow
+
+### Spinners
+
+15 animated spinner styles:
+
+```cpp
+echo::spinner spin(echo::SpinnerStyle::dots_scrolling);
+spin.set_message("Loading...");
+spin.set_color("#00FF00");
+
+for (int i = 0; i < 50; ++i) {
+    spin.tick();
+    std::this_thread::sleep_for(std::chrono::milliseconds(
+        spin.get_interval_ms()
+    ));
+}
+spin.stop("Done!");
+```
+
+**Spinner styles:** line, pipe, simple_dots, dots_scrolling, flip, toggle, layer, point, dqpb, bouncing_bar, bouncing_ball, aesthetic, binary, grow_vertical, grow_horizontal
+
+### Step Indicators
+
+Track multi-step workflows:
+
+```cpp
+echo::steps workflow({"Initialize", "Process", "Validate", "Complete"});
+workflow.set_color("#00FFFF");
+
+workflow.next();  // Initialize
+std::this_thread::sleep_for(std::chrono::seconds(1));
+workflow.complete();
+
+workflow.next();  // Process
+std::this_thread::sleep_for(std::chrono::seconds(1));
+workflow.complete();
+
+workflow.next();  // Validate
+std::this_thread::sleep_for(std::chrono::seconds(1));
+workflow.fail();  // Mark as failed
+
+workflow.next();  // Complete
+```
+
+### Banners, Boxes, and Separators
+
+```cpp
+// Separator
+echo::separator("Section Title", '=');
+echo::separator("Gradient", '─', {"#FF0000", "#00FF00", "#0000FF"});
+
+// Box (6 styles: Single, Double, Rounded, Heavy, Dashed, ASCII)
+echo::box("Important Message", echo::BoxStyle::Double);
+echo::box("Colored Box", echo::BoxStyle::Rounded, "#FF00FF");
+
+// Header
+echo::header("Application Name");
+echo::header("Colored Header", "#00FFFF");
+
+// Title
+echo::title("Chapter 1", '=');
+
+// Banner
+echo::banner("WELCOME", echo::BoxStyle::Heavy);
+```
+
+## Advanced Color Utilities
+
+Comprehensive color manipulation library:
+
+```cpp
+#include <echo/utils/color.hpp>
+
+// Color conversions
+auto rgb = echo::hex_to_rgb("#FF1493");
+auto hex = echo::to_hex(255, 20, 147);
+
+// Color mixing (7 modes)
+auto mixed = echo::mix(color1, color2, 0.5);
+auto added = echo::add(color1, color2);
+auto multiplied = echo::multiply(color1, color2);
+auto screened = echo::screen(color1, color2);
+auto overlayed = echo::overlay(color1, color2);
+
+// Color adjustments (8 operations)
+auto lighter = echo::lighten(rgb, 0.2);
+auto darker = echo::darken(rgb, 0.2);
+auto brighter = echo::brighten(rgb, 50);
+auto dimmer = echo::dim(rgb, 50);
+auto saturated = echo::saturate(rgb, 0.3);
+auto desaturated = echo::desaturate(rgb, 0.3);
+auto inverted = echo::invert(rgb);
+auto gray = echo::grayscale(rgb);
+
+// Color analysis
+auto lum = echo::luminance(rgb);
+bool dark = echo::is_dark(rgb);
+bool light = echo::is_light(rgb);
+auto dist = echo::distance(color1, color2);
+auto contrast = echo::contrast_ratio(color1, color2);
+
+// Color schemes (7 generators)
+auto comp = echo::complementary(rgb);
+auto analog = echo::analogous(rgb, 5, 30);
+auto triadic = echo::triadic(rgb);
+auto tints = echo::tints(rgb, 5);
+auto shades = echo::shades(rgb, 5);
+auto tones = echo::tones(rgb, 5);
+auto temp = echo::from_temperature(0.5);  // Warm color
+```
+
+## String Formatting
+
+Powerful chainable string formatting with 60+ methods:
+
+```cpp
+#include <echo/format.hpp>
+
+// Colors and styles
+auto str = echo::format::String("Hello")
+    .red().bold().underline();
+
+// RGB/HEX colors
+auto custom = echo::format::String("Custom")
+    .fg(255, 100, 50)
+    .bg("#1E1E1E");
+
+// Text alignment
+auto aligned = echo::format::String("Text")
+    .center(20)
+    .border('*');
+
+// Text transformation
+auto transformed = echo::format::String("hello world")
+    .title_case()
+    .bold();
+
+// Truncation and wrapping
+auto truncated = echo::format::String("Long text...")
+    .ellipsis(10);
+
+auto wrapped = echo::format::String("Very long text that needs wrapping")
+    .wrap(20);
+
+// Numeric formatting
+auto bytes = echo::format::String("1048576")
+    .format_bytes();  // "1.00 MB"
+
+auto duration = echo::format::String("3665")
+    .format_duration();  // "1h 1m 5s"
+
+// Special formatting
+auto progress = echo::format::String("50")
+    .progress(50);  // Progress bar representation
+
+auto badge = echo::format::String("value")
+    .badge("label");  // [label: value]
+```
+
 ## Performance
 
-Echo is designed to be **invisible in production code** when used with compile-time log levels.
+Echo is designed for **invisible overhead** in production code.
 
-### Zero Overhead with Compile-Time Filtering
+### Benchmark Results
 
-When you set `-DLOGLEVEL=Error` (or any level), filtered log statements are **completely removed** from the binary:
+| Scenario | Latency | Throughput | Notes |
+|----------|---------|------------|-------|
+| **Compile-time filtered** | **0 ns** | **∞** | Code doesn't exist in binary |
+| Runtime filtered | 56-60 ns | 16.7-17.7M ops/s | Just integer comparison |
+| Active logging (NullSink) | 260-290 ns | 3.4-3.8M ops/s | Formatting only |
+| Active logging (file) | 350 ns | 2.9M ops/s | Includes file I/O |
+| Active logging (console) | 650 ns | 1.5M ops/s | Includes terminal I/O |
+| `.once()` overhead | +3-5 ns | - | After first call |
+| Category filtering | +30-40 ns | - | Hash lookup |
+
+### Zero-Cost Abstraction
+
+When you compile with `-DLOGLEVEL=Error`, filtered log statements are **completely removed** from the binary:
 
 ```cpp
 // Compiled with -DLOGLEVEL=Error
@@ -572,21 +565,10 @@ echo::error("This runs", calculate());  // ← Exists in binary
 
 **The `calculate()` function is NEVER called for filtered logs!**
 
-### Performance Numbers
-
-| Scenario | Overhead | Notes |
-|----------|----------|-------|
-| **Compile-time filtered** | **0 ns** | Code doesn't exist in binary |
-| Runtime filtered | ~8 ns | Just an integer comparison |
-| `.once()` first call | ~50 ns | Hash map insert |
-| `.once()` after first | ~30 ns | Hash map lookup + skip |
-| Actually printing | ~2 μs | String format + mutex + I/O |
-
 ### Best Practices
 
 **✅ DO: Use compile-time levels in production**
 ```cmake
-# CMakeLists.txt
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_compile_definitions(LOGLEVEL=Error)
 endif()
@@ -595,56 +577,30 @@ endif()
 **✅ DO: Use `.once()` in loops**
 ```cpp
 for (int i = 0; i < 1000000; i++) {
-    echo::warn("Warning").once();  // Prints once, then free!
+    echo::warn("Warning").once();  // Prints once, then ~60ns overhead
 }
 ```
 
-**✅ DO: Don't worry about expensive args with compile-time filtering**
+**✅ DO: Enable only needed sinks**
 ```cpp
-// With -DLOGLEVEL=Error, expensive_calc() NEVER runs!
-echo::debug("Result: ", expensive_calc());
+#define ECHO_ENABLE_FILE_SINK  // Only enable what you need
+#include <echo/echo.hpp>
 ```
 
 **❌ DON'T: Use `echo()` in performance-critical loops**
 ```cpp
-// echo() always prints - no filtering
+// BAD - echo() always prints (no filtering)
 for (int i = 0; i < 1000000; i++) {
-    echo("iteration");  // BAD - prints 1M times
+    echo("iteration");  // Prints 1M times
 }
 
-// Use log levels instead
+// GOOD - Use log levels with compile-time filtering
 for (int i = 0; i < 1000000; i++) {
-    echo::debug("iteration").once();  // GOOD - compile-time filtered
+    echo::debug("iteration").once();  // Compile-time filtered
 }
 ```
 
-See [PERFORMANCE.md](PERFORMANCE.md) for detailed benchmarks and optimization guide.
-
-## Configuration
-
-### Compile-Time Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `LOGLEVEL` | Minimum log level (Trace\|Debug\|Info\|Warn\|Error\|Critical\|Off) | `Info` |
-| `ECHOLEVEL` | Alternative to LOGLEVEL (LOGLEVEL takes precedence) | `Info` |
-| `ECHO_ENABLE_TIMESTAMP` | Enable timestamps in HH:MM:SS format | Disabled |
-
-### Build System Support
-
-```bash
-# Auto-detect build system
-make build
-
-# With log level
-make build LOGLEVEL=Error
-make build ECHOLEVEL=Debug
-
-# Or specify build system explicitly
-BUILD_SYSTEM=cmake make build
-BUILD_SYSTEM=xmake make build
-BUILD_SYSTEM=zig make build
-```
+See [misc/PERFORMANCE.md](misc/PERFORMANCE.md) for detailed benchmarks and optimization guide.
 
 ## Testing
 
@@ -653,113 +609,150 @@ BUILD_SYSTEM=zig make build
 make test
 
 # Run specific test
-make test TEST=test_wait
+make test TEST=test_category
+
+# Run with sanitizers
+make test-asan    # AddressSanitizer
+make test-tsan    # ThreadSanitizer
+make test-ubsan   # UndefinedBehaviorSanitizer
+make test-sanitizers  # All sanitizers
 
 # Build and run examples
 make build
-./build/linux/x86_64/release/color_demo
-./build/linux/x86_64/release/advanced_progress_demo
-./build/linux/x86_64/release/fullwidth_demo
+./build/color_demo
+./build/advanced_progress_demo
 ```
+
+**Test Coverage:**
+- 17 test files (150+ test cases)
+- Core features: levels, sinks, formatters, categories
+- Edge cases: concurrency, invalid inputs, long messages, Unicode
+- Integration: multi-sink, real-world scenarios
+- Thread safety: up to 20 concurrent threads
+
+## Build System
+
+Echo supports **three build systems** with automatic detection:
+
+### Make (Unified Interface)
+
+```bash
+make build        # Build project (auto-detects cmake/xmake)
+make config       # Configure build
+make reconfig     # Full reconfigure (cleans cache)
+make test         # Run tests
+make clean        # Clean build directory
+make help         # Show all targets
+```
+
+### CMake
+
+```bash
+mkdir build && cd build
+cmake -DECHO_BUILD_EXAMPLES=ON -DECHO_ENABLE_TESTS=ON ..
+make -j$(nproc)
+ctest
+```
+
+**CMake Options:**
+- `-DECHO_BUILD_EXAMPLES=ON` - Build examples
+- `-DECHO_ENABLE_TESTS=ON` - Enable tests
+- `-DECHO_BUILD_BENCHMARKS=ON` - Build benchmarks
+- `-DCOMPILER=gcc|clang` - Compiler selection
+- `-DECHO_ENABLE_SIMD=ON` - SIMD optimizations (default: ON)
+
+### XMake
+
+```bash
+xmake f --examples=y --tests=y
+xmake
+xmake test
+```
+
+**XMake Options:**
+- `--examples=y` - Build examples
+- `--tests=y` - Enable tests
+- `--toolchain=gcc|clang` - Compiler selection
+- `--simd=true` - SIMD optimizations (default: true)
+
+## Compiler Support
+
+- **C++20 or later** (required)
+- **GCC** 10+ (recommended)
+- **Clang** 12+ (recommended)
+- **MSVC** 19.29+ (Visual Studio 2019 16.11+)
+
+**SIMD Support:**
+- x86_64: AVX, AVX2, FMA
+- ARM64: NEON (enabled by default)
+- ARM32: NEON with hard float
 
 ## Requirements
 
-- C++20 or later
+- C++20 compiler
 - Standard library only (no external dependencies)
-- Unix/Linux/macOS for terminal width detection
+- Unix/Linux/macOS for full terminal features
+- Optional: doctest for tests
 
-## Color Support
+## Documentation
 
-Echo supports 24-bit true color using HEX codes:
+Generate API documentation:
 
-```cpp
-// Single colors
-echo::separator("Title", '-', "#FF5733");
-echo::box("Message", echo::BoxStyle::Double, "#00FF00");
-
-// Gradients (smooth transitions)
-echo::separator("Rainbow", '=', {"#FF0000", "#FF7F00", "#FFFF00", "#00FF00", "#0000FF", "#8B00FF"});
-
-// Progress bars
-bar.set_color("#00FFFF");
-bar.set_gradient({"#00FF00", "#FFFF00", "#FF0000"});
-
-// Spinners
-spin.set_color("#FF00FF");
-spin.set_gradient({"#FF0000", "#00FF00", "#0000FF"});
-```
-
-## Contributing
-
-Contributions are welcome. Please submit issues or pull requests.
-
-## License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## Quick Reference
-
-### All Features at a Glance
-
-```cpp
-#include <echo/echo.hpp>
-
-// Simple printing (no log levels, always shows)
-echo("Hello");
-echo("Colored").red().bold().italic();
-echo("Custom").hex("#FF1493").underline();
-echo("RGB").rgb(255, 87, 51);
-
-// Logging with levels (shows [level] prefix, respects filtering)
-echo::trace("Trace");    // Level 0
-echo::debug("Debug");    // Level 1
-echo::info("Info");      // Level 2 (default)
-echo::warn("Warning");   // Level 3
-echo::error("Error");    // Level 4
-echo::critical("Critical"); // Level 5
-
-// Fluent interface - chain anything!
-echo::info("Message").red().bold().italic().underline();
-echo::warn("Custom").hex("#00FFFF").bold();
-echo::error("RGB").rgb(255, 0, 0).italic();
-
-// Print once (loop-safe)
-for (int i = 0; i < 1000; i++) {
-    echo::info("Prints once").once();
-    echo("Also once").cyan().once();
-}
-
-// Log level control
-#define LOGLEVEL Error        // Compile-time (zero overhead!)
-LOGLEVEL=Debug ./myapp        // Environment variable
-echo::set_level(Level::Warn); // Runtime API
-
-// Named colors
-.red() .green() .blue() .yellow() .cyan() .magenta() .white() .gray()
-
-// Custom colors
-.hex("#FF5733")  // HEX color
-.rgb(255, 87, 51) // RGB color
-
-// Text modifiers
-.bold() .italic() .underline()
-
-// Special
-.once()  // Print only once (per location)
+```bash
+make docs TYPE=doxygen
+# Open docs/doxygen/html/index.html
 ```
 
 ## Examples
 
-See the `examples/` directory for complete working examples:
+The project includes 36 comprehensive examples:
 
-- `test_echo.cpp` - Simple echo() usage
-- `test_fluent.cpp` - Fluent interface with colors
-- `test_once.cpp` - .once() in loops
-- `test_level_demo.cpp` - Log level control
-- `performance_demo.cpp` - Performance benchmarks
-- `color_demo.cpp` - Color and styling examples
-- `advanced_progress_demo.cpp` - Progress bars and spinners
+**Core Logging:**
+- main.cpp - Basic logging
+- performance_demo.cpp - Performance characteristics
+- test_once.cpp, test_every_when.cpp - Rate limiting
+
+**Colors:**
+- color_demo.cpp - HEX color support
+- color_manipulation_demo.cpp - RGB utilities
+- format_demo.cpp - format::String colors
+- format_text_demo.cpp - Text manipulation
+
+**Formatters:**
+- formatter_demo.cpp - Custom formatters
+- formatter_basic_demo.cpp - Direct formatter usage
+- global_formatter_demo.cpp - Global formatter API
+
+**Sinks:**
+- sink_demo.cpp - Sink system
+- null_sink_demo.cpp - NullSink for testing
+- file_logging_demo.cpp - File logging
+
+**Widgets:**
+- wait_demo.cpp - Progress bars, spinners, steps
+- advanced_progress_demo.cpp - Advanced progress features
+- separator_demo.cpp - Banners and separators
+- fullwidth_demo.cpp - Auto-sizing progress bars
+
+**Benchmarks (11 files):**
+- bench_basic.cpp, bench_levels.cpp, bench_sinks.cpp
+- bench_formatters.cpp, bench_categories.cpp
+- bench_compile_time.cpp, bench_once.cpp
+- bench_threading.cpp, bench_memory.cpp
+- bench_latency.cpp, bench_vs_spdlog.cpp
+
+## License
+
+MIT License - see [LICENSE](./LICENSE) for details.
 
 ## Acknowledgments
 
-See [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) for credits and acknowledgments.
+Made possible thanks to [these amazing projects](ACKNOWLEDGMENTS.md).
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.

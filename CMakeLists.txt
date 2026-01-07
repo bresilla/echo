@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.15)
 # Project configuration
 # ==================================================================================================
 set(PROJECT_NAME echo)
-set(PROJECT_VERSION "0.0.21")
+set(PROJECT_VERSION "0.0.22")
 
 # Dependencies formats:
 #   Git:    set(LIB_DEPS "name|https://github.com/org/repo.git|tag" ...)
@@ -226,5 +226,21 @@ if(${PROJECT_NAME_UPPER}_ENABLE_TESTS)
         target_compile_definitions(${test_name} PRIVATE SHORT_NAMESPACE DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN PROJECT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
         target_link_libraries(${test_name} ${PROJECT_NAME}::${PROJECT_NAME} ${ALL_TEST_DEPS})
         add_test(NAME ${test_name} COMMAND ${test_name})
+    endforeach()
+endif()
+
+# ==================================================================================================
+# Benchmarks
+# ==================================================================================================
+option(${PROJECT_NAME_UPPER}_BUILD_BENCHMARKS "Build benchmarks" OFF)
+
+if(${PROJECT_NAME_UPPER}_BUILD_BENCHMARKS)
+    file(GLOB benchmark_sources CONFIGURE_DEPENDS benchmark/*.cpp)
+    foreach(src_file IN LISTS benchmark_sources)
+        get_filename_component(bench_name "${src_file}" NAME_WE)
+        add_executable(${bench_name} "${src_file}")
+        target_compile_definitions(${bench_name} PRIVATE SHORT_NAMESPACE PROJECT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+        target_link_libraries(${bench_name} ${PROJECT_NAME}::${PROJECT_NAME} ${LIB_DEP_TARGETS})
+        install(TARGETS ${bench_name} DESTINATION bin)
     endforeach()
 endif()

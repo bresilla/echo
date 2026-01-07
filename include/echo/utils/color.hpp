@@ -15,33 +15,12 @@
 #include <string>
 #include <vector>
 
-#ifndef _WIN32
-#include <sys/ioctl.h>
-#include <unistd.h>
-#endif
-
 namespace echo {
     namespace detail {
 
-        // =================================================================================================
-        // Terminal Width Detection
-        // =================================================================================================
-
-        /**
-         * @brief Get terminal width in columns
-         * @return Terminal width (defaults to 80 if detection fails)
-         */
-        inline int get_terminal_width() {
-#ifdef _WIN32
-            return 80; // Fallback for Windows
-#else
-            struct winsize w;
-            if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0 && w.ws_col > 0) {
-                return w.ws_col;
-            }
-            return 80; // Fallback
-#endif
-        }
+        // Forward declare get_terminal_width from terminal.hpp
+        // (will be included by echo.hpp)
+        [[nodiscard]] int get_terminal_width() noexcept;
 
         // =================================================================================================
         // Color Structure
@@ -65,37 +44,42 @@ namespace echo {
          *
          * Accepts both "#RRGGBB" and "RRGGBB" formats.
          * Returns {0, 0, 0} if invalid format.
+         * @note Exception-safe: returns black on any parsing error
          */
-        inline Color hex_to_rgb(const std::string &hex) {
-            if (hex.empty())
-                return Color(0, 0, 0);
+        [[nodiscard]] inline Color hex_to_rgb(const std::string &hex) noexcept {
+            try {
+                if (hex.empty())
+                    return Color(0, 0, 0);
 
-            std::string h = hex;
+                std::string h = hex;
 
-            // Remove '#' if present
-            if (h[0] == '#') {
-                h = h.substr(1);
-            }
+                // Remove '#' if present
+                if (h[0] == '#') {
+                    h = h.substr(1);
+                }
 
-            // Validate length
-            if (h.length() != 6) {
-                return Color(0, 0, 0);
-            }
-
-            // Validate hex characters
-            for (char c : h) {
-                if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f'))) {
+                // Validate length
+                if (h.length() != 6) {
                     return Color(0, 0, 0);
                 }
+
+                // Validate hex characters
+                for (char c : h) {
+                    if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f'))) {
+                        return Color(0, 0, 0);
+                    }
+                }
+
+                // Convert to Color
+                Color rgb;
+                rgb.r = std::stoi(h.substr(0, 2), nullptr, 16);
+                rgb.g = std::stoi(h.substr(2, 2), nullptr, 16);
+                rgb.b = std::stoi(h.substr(4, 2), nullptr, 16);
+
+                return rgb;
+            } catch (const std::exception &) {
+                return Color(0, 0, 0);
             }
-
-            // Convert to Color
-            Color rgb;
-            rgb.r = std::stoi(h.substr(0, 2), nullptr, 16);
-            rgb.g = std::stoi(h.substr(2, 2), nullptr, 16);
-            rgb.b = std::stoi(h.substr(4, 2), nullptr, 16);
-
-            return rgb;
         }
 
         // =================================================================================================
@@ -109,19 +93,19 @@ namespace echo {
          * @param b Blue component (0-255)
          * @return ANSI escape sequence for foreground color
          */
-        inline std::string rgb_to_ansi(int r, int g, int b) {
+        [[nodiscard]] inline std::string rgb_to_ansi(int r, int g, int b) {
             return "\033[38;2;" + std::to_string(r) + ";" + std::to_string(g) + ";" + std::to_string(b) + "m";
         }
 
         /**
          * @brief Convert Color struct to ANSI color code
          */
-        inline std::string rgb_to_ansi(const Color &rgb) { return rgb_to_ansi(rgb.r, rgb.g, rgb.b); }
+        [[nodiscard]] inline std::string rgb_to_ansi(const Color &rgb) { return rgb_to_ansi(rgb.r, rgb.g, rgb.b); }
 
         /**
          * @brief Get ANSI reset code to return to default color
          */
-        inline std::string reset_color() { return "\033[0m"; }
+        [[nodiscard]] inline constexpr const char *reset_color() noexcept { return "\033[0m"; }
 
         // =================================================================================================
         // Color Interpolation for Gradients
@@ -134,7 +118,7 @@ namespace echo {
          * @param t Interpolation factor (0.0 = c1, 1.0 = c2)
          * @return Interpolated Color color
          */
-        inline Color interpolate(const Color &c1, const Color &c2, float t) {
+        [[nodiscard]] inline Color interpolate(const Color &c1, const Color &c2, float t) noexcept {
             // Clamp t to [0, 1]
             t = std::max(0.0f, std::min(1.0f, t));
 
@@ -240,14 +224,14 @@ namespace echo {
          * @param hex HEX color string (e.g., "#FF5733" or "FF5733")
          * @return Color structure with r, g, b values (0-255)
          */
-        inline Color from_hex(const std::string &hex) { return detail::hex_to_rgb(hex); }
+        [[nodiscard]] inline Color from_hex(const std::string &hex) noexcept { return detail::hex_to_rgb(hex); }
 
         /**
          * @brief Convert Color to HEX color string
          * @param rgb Color color
          * @return HEX string with # prefix (e.g., "#FF5733")
          */
-        inline std::string to_hex(const Color &rgb) {
+        [[nodiscard]] inline std::string to_hex(const Color &rgb) {
             char buffer[8];
             snprintf(buffer, sizeof(buffer), "#%02X%02X%02X", rgb.r, rgb.g, rgb.b);
             return std::string(buffer);
@@ -260,14 +244,14 @@ namespace echo {
          * @param b Blue component (0-255)
          * @return HEX string with # prefix
          */
-        inline std::string to_hex(int r, int g, int b) { return to_hex(Color(r, g, b)); }
+        [[nodiscard]] inline std::string to_hex(int r, int g, int b) { return to_hex(Color(r, g, b)); }
 
         /**
          * @brief Convert Color to ANSI color code
          * @param rgb Color color
          * @return ANSI escape sequence for foreground color
          */
-        inline std::string to_ansi(const Color &rgb) { return detail::rgb_to_ansi(rgb); }
+        [[nodiscard]] inline std::string to_ansi(const Color &rgb) { return detail::rgb_to_ansi(rgb); }
 
         /**
          * @brief Convert Color to ANSI color code
@@ -276,7 +260,7 @@ namespace echo {
          * @param b Blue component (0-255)
          * @return ANSI escape sequence for foreground color
          */
-        inline std::string to_ansi(int r, int g, int b) { return detail::rgb_to_ansi(r, g, b); }
+        [[nodiscard]] inline std::string to_ansi(int r, int g, int b) { return detail::rgb_to_ansi(r, g, b); }
 
         // =================================================================================================
         // Utility Functions
@@ -287,7 +271,7 @@ namespace echo {
          * @param rgb Color color to clamp
          * @return Clamped Color color
          */
-        inline Color clamp(const Color &rgb) {
+        [[nodiscard]] inline Color clamp(const Color &rgb) noexcept {
             return Color(std::max(0, std::min(255, rgb.r)), std::max(0, std::min(255, rgb.g)),
                          std::max(0, std::min(255, rgb.b)));
         }
@@ -296,7 +280,7 @@ namespace echo {
          * @brief Generate random Color color
          * @return Random Color color
          */
-        inline Color random() {
+        [[nodiscard]] inline Color random() {
             static std::random_device rd;
             static std::mt19937 gen(rd());
             static std::uniform_int_distribution<> dis(0, 255);
@@ -313,7 +297,9 @@ namespace echo {
          * @param c2 Second color
          * @return Mixed color
          */
-        inline Color mix(const Color &c1, const Color &c2) { return detail::interpolate(c1, c2, 0.5f); }
+        [[nodiscard]] inline Color mix(const Color &c1, const Color &c2) noexcept {
+            return detail::interpolate(c1, c2, 0.5f);
+        }
 
         /**
          * @brief Mix two colors with custom weight
@@ -322,7 +308,9 @@ namespace echo {
          * @param weight Weight of second color (0.0 = all c1, 1.0 = all c2)
          * @return Mixed color
          */
-        inline Color mix(const Color &c1, const Color &c2, float weight) { return detail::interpolate(c1, c2, weight); }
+        [[nodiscard]] inline Color mix(const Color &c1, const Color &c2, float weight) noexcept {
+            return detail::interpolate(c1, c2, weight);
+        }
 
         /**
          * @brief Additive blend - add Color values (clamped to 255)
@@ -330,7 +318,7 @@ namespace echo {
          * @param c2 Second color
          * @return Blended color
          */
-        inline Color add(const Color &c1, const Color &c2) {
+        [[nodiscard]] inline Color add(const Color &c1, const Color &c2) noexcept {
             return clamp(Color(c1.r + c2.r, c1.g + c2.g, c1.b + c2.b));
         }
 
@@ -339,9 +327,12 @@ namespace echo {
          * @param c1 First color
          * @param c2 Second color
          * @return Blended color
+         * @note Uses larger intermediate type to prevent overflow
          */
-        inline Color multiply(const Color &c1, const Color &c2) {
-            return Color((c1.r * c2.r) / 255, (c1.g * c2.g) / 255, (c1.b * c2.b) / 255);
+        [[nodiscard]] inline Color multiply(const Color &c1, const Color &c2) noexcept {
+            return Color(static_cast<int>((static_cast<long>(c1.r) * c2.r) / 255),
+                         static_cast<int>((static_cast<long>(c1.g) * c2.g) / 255),
+                         static_cast<int>((static_cast<long>(c1.b) * c2.b) / 255));
         }
 
         /**
@@ -349,10 +340,12 @@ namespace echo {
          * @param c1 First color
          * @param c2 Second color
          * @return Blended color
+         * @note Uses larger intermediate type to prevent overflow
          */
-        inline Color screen(const Color &c1, const Color &c2) {
-            return Color(255 - ((255 - c1.r) * (255 - c2.r)) / 255, 255 - ((255 - c1.g) * (255 - c2.g)) / 255,
-                         255 - ((255 - c1.b) * (255 - c2.b)) / 255);
+        [[nodiscard]] inline Color screen(const Color &c1, const Color &c2) noexcept {
+            return Color(255 - static_cast<int>((static_cast<long>(255 - c1.r) * (255 - c2.r)) / 255),
+                         255 - static_cast<int>((static_cast<long>(255 - c1.g) * (255 - c2.g)) / 255),
+                         255 - static_cast<int>((static_cast<long>(255 - c1.b) * (255 - c2.b)) / 255));
         }
 
         /**
@@ -360,13 +353,14 @@ namespace echo {
          * @param c1 Base color
          * @param c2 Blend color
          * @return Blended color
+         * @note Uses larger intermediate type to prevent overflow
          */
-        inline Color overlay(const Color &c1, const Color &c2) {
-            auto overlay_channel = [](int base, int blend) {
+        [[nodiscard]] inline Color overlay(const Color &c1, const Color &c2) noexcept {
+            auto overlay_channel = [](int base, int blend) noexcept -> int {
                 if (base < 128) {
-                    return (2 * base * blend) / 255;
+                    return static_cast<int>((2L * base * blend) / 255);
                 } else {
-                    return 255 - (2 * (255 - base) * (255 - blend)) / 255;
+                    return 255 - static_cast<int>((2L * (255 - base) * (255 - blend)) / 255);
                 }
             };
             return Color(overlay_channel(c1.r, c2.r), overlay_channel(c1.g, c2.g), overlay_channel(c1.b, c2.b));
@@ -382,7 +376,7 @@ namespace echo {
          * @param amount Amount to lighten (0.0 to 1.0, where 1.0 = white)
          * @return Lightened color
          */
-        inline Color lighten(const Color &rgb, float amount) {
+        [[nodiscard]] inline Color lighten(const Color &rgb, float amount) noexcept {
             amount = std::max(0.0f, std::min(1.0f, amount));
             return mix(rgb, Color(255, 255, 255), amount);
         }
@@ -393,7 +387,7 @@ namespace echo {
          * @param amount Amount to darken (0.0 to 1.0, where 1.0 = black)
          * @return Darkened color
          */
-        inline Color darken(const Color &rgb, float amount) {
+        [[nodiscard]] inline Color darken(const Color &rgb, float amount) noexcept {
             amount = std::max(0.0f, std::min(1.0f, amount));
             return mix(rgb, Color(0, 0, 0), amount);
         }
@@ -404,7 +398,7 @@ namespace echo {
          * @param amount Amount to add (0-255)
          * @return Brightened color
          */
-        inline Color brighten(const Color &rgb, int amount) {
+        [[nodiscard]] inline Color brighten(const Color &rgb, int amount) noexcept {
             return clamp(Color(rgb.r + amount, rgb.g + amount, rgb.b + amount));
         }
 
@@ -414,7 +408,7 @@ namespace echo {
          * @param amount Amount to subtract (0-255)
          * @return Dimmed color
          */
-        inline Color dim(const Color &rgb, int amount) {
+        [[nodiscard]] inline Color dim(const Color &rgb, int amount) noexcept {
             return clamp(Color(rgb.r - amount, rgb.g - amount, rgb.b - amount));
         }
 
@@ -424,7 +418,7 @@ namespace echo {
          * @param amount Amount to saturate (0.0 to 1.0)
          * @return Saturated color
          */
-        inline Color saturate(const Color &rgb, float amount) {
+        [[nodiscard]] inline Color saturate(const Color &rgb, float amount) noexcept {
             amount = std::max(0.0f, std::min(1.0f, amount));
             int gray = (rgb.r + rgb.g + rgb.b) / 3;
             Color gray_color(gray, gray, gray);
@@ -437,7 +431,7 @@ namespace echo {
          * @param amount Amount to desaturate (0.0 to 1.0, where 1.0 = full gray)
          * @return Desaturated color
          */
-        inline Color desaturate(const Color &rgb, float amount) {
+        [[nodiscard]] inline Color desaturate(const Color &rgb, float amount) noexcept {
             amount = std::max(0.0f, std::min(1.0f, amount));
             int gray = (rgb.r + rgb.g + rgb.b) / 3;
             Color gray_color(gray, gray, gray);
@@ -449,14 +443,16 @@ namespace echo {
          * @param rgb Color to invert
          * @return Inverted color
          */
-        inline Color invert(const Color &rgb) { return Color(255 - rgb.r, 255 - rgb.g, 255 - rgb.b); }
+        [[nodiscard]] inline Color invert(const Color &rgb) noexcept {
+            return Color(255 - rgb.r, 255 - rgb.g, 255 - rgb.b);
+        }
 
         /**
          * @brief Convert to grayscale using luminance formula
          * @param rgb Color to convert
          * @return Grayscale color
          */
-        inline Color grayscale(const Color &rgb) {
+        [[nodiscard]] inline Color grayscale(const Color &rgb) noexcept {
             // Use standard luminance formula: 0.299*R + 0.587*G + 0.114*B
             int gray = static_cast<int>(0.299f * rgb.r + 0.587f * rgb.g + 0.114f * rgb.b);
             return Color(gray, gray, gray);
@@ -471,7 +467,7 @@ namespace echo {
          * @param rgb Color to analyze
          * @return Luminance value (0-255)
          */
-        inline int luminance(const Color &rgb) {
+        [[nodiscard]] inline int luminance(const Color &rgb) noexcept {
             return static_cast<int>(0.299f * rgb.r + 0.587f * rgb.g + 0.114f * rgb.b);
         }
 
@@ -481,7 +477,9 @@ namespace echo {
          * @param threshold Luminance threshold (default 128)
          * @return True if color is dark
          */
-        inline bool is_dark(const Color &rgb, int threshold = 128) { return luminance(rgb) < threshold; }
+        [[nodiscard]] inline bool is_dark(const Color &rgb, int threshold = 128) noexcept {
+            return luminance(rgb) < threshold;
+        }
 
         /**
          * @brief Check if color is light
@@ -489,7 +487,9 @@ namespace echo {
          * @param threshold Luminance threshold (default 128)
          * @return True if color is light
          */
-        inline bool is_light(const Color &rgb, int threshold = 128) { return luminance(rgb) >= threshold; }
+        [[nodiscard]] inline bool is_light(const Color &rgb, int threshold = 128) noexcept {
+            return luminance(rgb) >= threshold;
+        }
 
         /**
          * @brief Calculate Euclidean distance between two colors
@@ -497,7 +497,7 @@ namespace echo {
          * @param c2 Second color
          * @return Distance value (0-441, where 441 = max distance)
          */
-        inline float distance(const Color &c1, const Color &c2) {
+        [[nodiscard]] inline float distance(const Color &c1, const Color &c2) noexcept {
             int dr = c1.r - c2.r;
             int dg = c1.g - c2.g;
             int db = c1.b - c2.b;
@@ -510,7 +510,7 @@ namespace echo {
          * @param c2 Second color
          * @return Contrast ratio (1.0 to 21.0)
          */
-        inline float contrast_ratio(const Color &c1, const Color &c2) {
+        [[nodiscard]] inline float contrast_ratio(const Color &c1, const Color &c2) noexcept {
             float l1 = luminance(c1) / 255.0f;
             float l2 = luminance(c2) / 255.0f;
             float lighter = std::max(l1, l2);
@@ -527,7 +527,7 @@ namespace echo {
          * @param rgb Input color
          * @return Complementary color
          */
-        inline Color complementary(const Color &rgb) { return invert(rgb); }
+        [[nodiscard]] inline Color complementary(const Color &rgb) noexcept { return invert(rgb); }
 
         /**
          * @brief Generate analogous colors (nearby colors)
@@ -536,7 +536,7 @@ namespace echo {
          * @param angle Rotation angle (0.0 to 1.0, default 0.1 = slight shift)
          * @return Vector of analogous colors
          */
-        inline std::vector<Color> analogous(const Color &rgb, int count = 2, float angle = 0.1f) {
+        [[nodiscard]] inline std::vector<Color> analogous(const Color &rgb, int count = 2, float angle = 0.1f) {
             std::vector<Color> colors;
             for (int i = 0; i < count; ++i) {
                 float shift = angle * (i + 1);
@@ -554,7 +554,7 @@ namespace echo {
          * @param rgb Base color
          * @return Vector of three colors (including base)
          */
-        inline std::vector<Color> triadic(const Color &rgb) {
+        [[nodiscard]] inline std::vector<Color> triadic(const Color &rgb) {
             std::vector<Color> colors;
             colors.push_back(rgb);
             // Rotate Color channels
@@ -569,7 +569,7 @@ namespace echo {
          * @param count Number of tints to generate
          * @return Vector of tints from original to white
          */
-        inline std::vector<Color> tints(const Color &rgb, int count = 5) {
+        [[nodiscard]] inline std::vector<Color> tints(const Color &rgb, int count = 5) {
             std::vector<Color> colors;
             for (int i = 0; i < count; ++i) {
                 float amount = static_cast<float>(i) / static_cast<float>(count - 1);
@@ -584,7 +584,7 @@ namespace echo {
          * @param count Number of shades to generate
          * @return Vector of shades from original to black
          */
-        inline std::vector<Color> shades(const Color &rgb, int count = 5) {
+        [[nodiscard]] inline std::vector<Color> shades(const Color &rgb, int count = 5) {
             std::vector<Color> colors;
             for (int i = 0; i < count; ++i) {
                 float amount = static_cast<float>(i) / static_cast<float>(count - 1);
@@ -599,7 +599,7 @@ namespace echo {
          * @param count Number of tones to generate
          * @return Vector of tones from original to gray
          */
-        inline std::vector<Color> tones(const Color &rgb, int count = 5) {
+        [[nodiscard]] inline std::vector<Color> tones(const Color &rgb, int count = 5) {
             std::vector<Color> colors;
             for (int i = 0; i < count; ++i) {
                 float amount = static_cast<float>(i) / static_cast<float>(count - 1);
@@ -613,7 +613,7 @@ namespace echo {
          * @param temp Temperature value (-1.0 = cool/blue, 0.0 = neutral, 1.0 = warm/red)
          * @return Color color representing the temperature
          */
-        inline Color from_temperature(float temp) {
+        [[nodiscard]] inline Color from_temperature(float temp) noexcept {
             temp = std::max(-1.0f, std::min(1.0f, temp));
             if (temp < 0) {
                 // Cool colors (blue)

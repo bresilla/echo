@@ -2,7 +2,7 @@
 -- NOTE: Due to xmake description domain limitations, PROJECT_NAME must be hardcoded
 --       and kept in sync with the NAME file. The VERSION is read dynamically.
 local PROJECT_NAME = "echo"
-local PROJECT_VERSION = "0.0.21"
+local PROJECT_VERSION = "0.0.22"
 
 -- Dependencies formats:
 --   Git:    {"name", "https://github.com/org/repo.git", "tag"}
@@ -12,6 +12,7 @@ local LIB_DEPS = {
     -- {"datapod", "https://github.com/robolibs/datapod.git", "0.0.15"},
 }
 local EXAMPLE_DEPS = {
+    {system = "spdlog"},
     -- additional deps for examples (lib deps are auto-included)
 }
 local TEST_DEPS = {
@@ -217,7 +218,7 @@ end
 -- Examples & Tests (only when this is the main project)
 if os.projectdir() == os.curdir() then
     if has_config("examples") then
-        add_binaries("examples/*.cpp", {
+        add_binaries("examples/**.cpp", {
             packages = EXAMPLE_DEP_NAMES,
             defines = {"HAS_RERUN"}
         })

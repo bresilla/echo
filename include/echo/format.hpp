@@ -24,7 +24,7 @@
  *   - Method chaining for fluent API
  */
 
-#include <echo/color.hpp>
+#include <echo/utils/color.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -377,9 +377,9 @@ namespace echo {
             // Conversion Methods
             // =================================================================================================
 
-            std::string to_string() const { return build_ansi_prefix() + text_ + build_ansi_suffix(); }
+            [[nodiscard]] std::string to_string() const { return build_ansi_prefix() + text_ + build_ansi_suffix(); }
 
-            std::string str() const { return text_; }
+            [[nodiscard]] std::string str() const { return text_; }
 
             operator std::string() const { return to_string(); }
 
@@ -809,20 +809,21 @@ namespace echo {
             // Inspection Methods
             // =================================================================================================
 
-            size_t length() const { return text_.length(); }
+            [[nodiscard]] size_t length() const noexcept { return text_.length(); }
 
-            size_t len() const { return text_.length(); }
+            [[nodiscard]] size_t len() const noexcept { return text_.length(); }
 
-            size_t width() const {
+            [[nodiscard]] size_t width() const noexcept {
                 // Calculate display width (excluding ANSI codes)
                 // For now, just return text length
-                // TODO: Could be enhanced to parse ANSI codes
                 return text_.length();
             }
 
-            bool is_empty() const { return text_.empty(); }
+            [[nodiscard]] bool is_empty() const noexcept { return text_.empty(); }
 
-            bool contains(const std::string &str) const { return text_.find(str) != std::string::npos; }
+            [[nodiscard]] bool contains(const std::string &str) const noexcept {
+                return text_.find(str) != std::string::npos;
+            }
         };
 
     } // namespace format
