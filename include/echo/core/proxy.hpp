@@ -25,14 +25,6 @@ namespace echo {
 
 namespace echo {
 
-#ifdef ECHO_LOG_ENABLED
-    // Forward declarations for file logging (defined in log.hpp)
-    namespace log::detail {
-        template <Level L> struct file_writer;
-        struct file_writer_print;
-    } // namespace log::detail
-#endif
-
     namespace detail {
         // Forward declare sink registry access
         SinkRegistry &get_sink_registry();
@@ -110,11 +102,6 @@ namespace echo {
         std::string color_code_;
         bool skip_print_ = false;
         bool inplace_ = false;
-
-#ifdef ECHO_LOG_ENABLED
-        // Friend declaration for log.hpp to access private members
-        template <Level> friend struct log::detail::file_writer;
-#endif
 
       public:
         template <typename... Args> log_proxy(const Args &...args) {
@@ -250,11 +237,6 @@ namespace echo {
             return *this;
         }
 
-#ifdef ECHO_LOG_ENABLED
-        // Log to file (only available when log.hpp is included)
-        log_proxy &log();
-#endif
-
         // Destructor performs the actual logging
         ~log_proxy(); // Defined after SinkRegistry is complete
     };
@@ -274,11 +256,6 @@ namespace echo {
         std::string color_code_;
         bool skip_print_ = false;
         bool inplace_ = false;
-
-#ifdef ECHO_LOG_ENABLED
-        // Friend declaration for log.hpp to access private members
-        friend struct log::detail::file_writer_print;
-#endif
 
       public:
         template <typename... Args> print_proxy(const Args &...args) { message_ = detail::build_message(args...); }
@@ -408,11 +385,6 @@ namespace echo {
             return *this;
         }
 
-#ifdef ECHO_LOG_ENABLED
-        // Log to file (only available when log.hpp is included)
-        print_proxy &log();
-#endif
-
         // Destructor performs the actual printing
         ~print_proxy(); // Defined after SinkRegistry is complete
     };
@@ -529,30 +501,6 @@ namespace echo {
         std::lock_guard<std::mutex> lock(detail::get_log_mutex());
         detail::get_print_writer()(formatted);
     }
-
-    // =================================================================================================
-    // File logging support (only when log.hpp is included)
-    // =================================================================================================
-
-#ifdef ECHO_LOG_ENABLED
-    namespace log::detail {
-        // Forward declarations for file writing functions
-        template <Level L> void write_to_file(log_proxy<L> &proxy, Level level);
-        void write_to_file(print_proxy &proxy);
-    } // namespace log::detail
-
-    // Implementation of log_proxy::log()
-    template <Level L> inline log_proxy<L> &log_proxy<L>::log() {
-        log::detail::write_to_file(*this, L);
-        return *this;
-    }
-
-    // Implementation of print_proxy::log()
-    inline print_proxy &print_proxy::log() {
-        log::detail::write_to_file(*this);
-        return *this;
-    }
-#endif
 
 } // namespace echo
 
