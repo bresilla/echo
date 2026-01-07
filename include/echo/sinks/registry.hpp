@@ -7,6 +7,8 @@
 
 #include <echo/core/level.hpp>
 #include <echo/core/mutex.hpp>
+#include <echo/formatters/formatter.hpp>
+#include <echo/formatters/pattern.hpp>
 #include <echo/sinks/console_sink.hpp>
 #include <echo/sinks/sink.hpp>
 
@@ -132,6 +134,20 @@ namespace echo {
                 std::lock_guard<std::mutex> lock(mutex_);
                 return sinks_.empty();
             }
+
+            /**
+             * @brief Set formatter for all registered sinks
+             * @param formatter Shared pointer to the formatter
+             */
+            void set_formatter_all(FormatterPtr formatter) {
+                std::lock_guard<std::mutex> lock(mutex_);
+                ensure_default_sink();
+                for (auto &sink : sinks_) {
+                    if (sink) {
+                        sink->set_formatter(formatter);
+                    }
+                }
+            }
         };
 
     } // namespace detail
@@ -174,6 +190,41 @@ namespace echo {
      * @return Number of sinks
      */
     [[nodiscard]] inline size_t sink_count() { return detail::SinkRegistry::instance().count(); }
+
+    /**
+     * @brief Set a pattern formatter for all registered sinks
+     * @param pattern Pattern string with placeholders
+     *
+     * Supported placeholders:
+     * - {timestamp} or {time} - Timestamp
+     * - {level} - Log level name
+     * - {message} or {msg} - Log message
+     * - {file} - Source file
+     * - {line} - Source line
+     * - {function} or {func} - Function name
+     * - {thread} - Thread ID
+     *
+     * Example:
+     *   echo::set_pattern("[{time}][{level}] {msg}");
+     *   echo::set_pattern("{level}: {msg}");
+     */
+    inline void set_pattern(const std::string &pattern) {
+        auto formatter = std::make_shared<PatternFormatter>(pattern);
+        detail::SinkRegistry::instance().set_formatter_all(formatter);
+    }
+
+    /**
+     * @brief Set a custom formatter for all registered sinks
+     * @param formatter Shared pointer to the formatter
+     *
+     * Example:
+     *   echo::set_formatter(std::make_shared<echo::CustomFormatter>(
+     *       [](const LogRecord& rec) {
+     *           return "[" + rec.timestamp + "] " + rec.message;
+     *       }
+     *   ));
+     */
+    inline void set_formatter(FormatterPtr formatter) { detail::SinkRegistry::instance().set_formatter_all(formatter); }
 
     // =================================================================================================
     // Set up sink writers for proxy.hpp

@@ -160,6 +160,62 @@ test:
 t: test
 
 # ==================================================================================================
+# Sanitizer testing
+# ==================================================================================================
+SANITIZER ?=
+
+test-asan:
+	@echo "Running tests with AddressSanitizer..."
+ifeq ($(BUILD_SYSTEM),cmake)
+	@rm -rf $(BUILD_DIR) && mkdir -p $(BUILD_DIR)
+	@cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=Debug \
+		-DCMAKE_CXX_FLAGS="-fsanitize=address -fno-omit-frame-pointer -g" \
+		-D$(PROJECT_CAP)_BUILD_EXAMPLES=OFF -D$(PROJECT_CAP)_ENABLE_TESTS=ON .. && make -j$(shell nproc)
+	@cd $(BUILD_DIR) && ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ctest --output-on-failure
+else ifeq ($(BUILD_SYSTEM),xmake)
+	@xmake f --mode=debug --cxflags="-fsanitize=address -fno-omit-frame-pointer -g" --ldflags="-fsanitize=address" -c -y
+	@xmake -j$(shell nproc)
+	@ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 xmake test
+else
+	@echo "Sanitizer testing not yet supported for $(BUILD_SYSTEM)"
+endif
+
+test-tsan:
+	@echo "Running tests with ThreadSanitizer..."
+ifeq ($(BUILD_SYSTEM),cmake)
+	@rm -rf $(BUILD_DIR) && mkdir -p $(BUILD_DIR)
+	@cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=Debug \
+		-DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer -g" \
+		-D$(PROJECT_CAP)_BUILD_EXAMPLES=OFF -D$(PROJECT_CAP)_ENABLE_TESTS=ON .. && make -j$(shell nproc)
+	@cd $(BUILD_DIR) && TSAN_OPTIONS=halt_on_error=1 ctest --output-on-failure
+else ifeq ($(BUILD_SYSTEM),xmake)
+	@xmake f --mode=debug --cxflags="-fsanitize=thread -fno-omit-frame-pointer -g" --ldflags="-fsanitize=thread" -c -y
+	@xmake -j$(shell nproc)
+	@TSAN_OPTIONS=halt_on_error=1 xmake test
+else
+	@echo "Sanitizer testing not yet supported for $(BUILD_SYSTEM)"
+endif
+
+test-ubsan:
+	@echo "Running tests with UndefinedBehaviorSanitizer..."
+ifeq ($(BUILD_SYSTEM),cmake)
+	@rm -rf $(BUILD_DIR) && mkdir -p $(BUILD_DIR)
+	@cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=Debug \
+		-DCMAKE_CXX_FLAGS="-fsanitize=undefined -fno-omit-frame-pointer -g" \
+		-D$(PROJECT_CAP)_BUILD_EXAMPLES=OFF -D$(PROJECT_CAP)_ENABLE_TESTS=ON .. && make -j$(shell nproc)
+	@cd $(BUILD_DIR) && UBSAN_OPTIONS=halt_on_error=1 ctest --output-on-failure
+else ifeq ($(BUILD_SYSTEM),xmake)
+	@xmake f --mode=debug --cxflags="-fsanitize=undefined -fno-omit-frame-pointer -g" --ldflags="-fsanitize=undefined" -c -y
+	@xmake -j$(shell nproc)
+	@UBSAN_OPTIONS=halt_on_error=1 xmake test
+else
+	@echo "Sanitizer testing not yet supported for $(BUILD_SYSTEM)"
+endif
+
+test-sanitizers: test-asan test-tsan test-ubsan
+	@echo "All sanitizer tests completed!"
+
+# ==================================================================================================
 # Help
 # ==================================================================================================
 help:
@@ -172,6 +228,10 @@ help:
 	@echo "  reconfig     Full reconfigure (cleans everything including cache)"
 	@echo "  run          Run the main executable"
 	@echo "  test         Run tests (TEST=<name> to run specific test)"
+	@echo "  test-asan    Run tests with AddressSanitizer"
+	@echo "  test-tsan    Run tests with ThreadSanitizer"
+	@echo "  test-ubsan   Run tests with UndefinedBehaviorSanitizer"
+	@echo "  test-sanitizers  Run all sanitizer tests"
 	@echo "  docs         Build documentation (TYPE=mdbook|doxygen)"
 	@echo "  release      Create a new release (TYPE=patch|minor|major)"
 	@echo
@@ -191,6 +251,10 @@ ifeq ($(TYPE),mdbook)
 	@git add --all && git commit -m "docs: building website/mdbook"
 else ifeq ($(TYPE),doxygen)
 	@command -v doxygen >/dev/null 2>&1 || { echo "doxygen is not installed. Please install it first."; exit 1; }
+	@echo "Generating Doxygen documentation..."
+	@doxygen Doxyfile
+	@echo "Documentation generated in docs/doxygen/html/"
+	@echo "Open docs/doxygen/html/index.html in your browser"
 else
 	$(error Invalid documentation type. Use 'make docs TYPE=mdbook' or 'make docs TYPE=doxygen')
 endif

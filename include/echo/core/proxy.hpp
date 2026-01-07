@@ -120,9 +120,7 @@ namespace echo {
         template <typename... Args> log_proxy(const Args &...args) {
             // Only build message if it will be printed (compile-time check)
             if constexpr (static_cast<int>(L) >= static_cast<int>(detail::ACTIVE_LEVEL)) {
-                std::ostringstream oss;
-                detail::append_args(oss, args...);
-                message_ = oss.str();
+                message_ = detail::build_message(args...);
             }
         }
 
@@ -283,11 +281,7 @@ namespace echo {
 #endif
 
       public:
-        template <typename... Args> print_proxy(const Args &...args) {
-            std::ostringstream oss;
-            detail::append_args(oss, args...);
-            message_ = oss.str();
-        }
+        template <typename... Args> print_proxy(const Args &...args) { message_ = detail::build_message(args...); }
 
         // Move semantics - allow moving but prevent copying
         print_proxy(print_proxy &&other) noexcept

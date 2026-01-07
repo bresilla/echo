@@ -44,10 +44,8 @@
 // Utilities (always included)
 #include <echo/utils/color.hpp>
 #include <echo/utils/hash.hpp>
+#include <echo/utils/string_pool.hpp>
 #include <echo/utils/terminal.hpp>
-
-// TODO: These will be created in future tasks
-// #include <echo/utils/string_pool.hpp>
 
 // Sinks - Base and Console (always included)
 #include <echo/sinks/console_sink.hpp>
@@ -68,8 +66,7 @@
 #endif
 
 #ifdef ECHO_ENABLE_NULL_SINK
-// TODO: Created in future task
-// #include <echo/sinks/null_sink.hpp>
+#include <echo/sinks/null_sink.hpp>
 #endif
 
 // Formatters (always included)
@@ -78,9 +75,9 @@
 #include <echo/formatters/pattern.hpp>
 
 // Filters (always included)
-// TODO: Created in task echo-1l6.7
+#include <echo/filters/category.hpp>
+// TODO: Created in future tasks
 // #include <echo/filters/level.hpp>
-// #include <echo/filters/category.hpp>
 // #include <echo/filters/composite.hpp>
 
 // Widgets (always included)

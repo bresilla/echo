@@ -9,6 +9,12 @@
 #include <string>
 #include <type_traits>
 
+// Check for std::format support (C++20)
+#if __cplusplus >= 202002L && __has_include(<format>)
+#include <format>
+#define ECHO_HAS_STD_FORMAT 1
+#endif
+
 namespace echo {
     namespace detail {
 
@@ -64,6 +70,53 @@ namespace echo {
         // Variadic argument formatting
         // =================================================================================================
 
+#ifdef ECHO_HAS_STD_FORMAT
+        // Type trait to check if a type is formattable with std::format
+        template <typename T, typename = void> struct is_std_formattable : std::false_type {};
+
+        template <typename T>
+        struct is_std_formattable<T, std::void_t<decltype(std::format("{}", std::declval<T>()))>> : std::true_type {};
+
+        // Fast path: Use std::format for formattable types
+        template <typename T> inline std::string format_single(const T &value) {
+            if constexpr (has_pretty<T>::value) {
+                return value.pretty();
+            } else if constexpr (has_print<T>::value) {
+                return value.print();
+            } else if constexpr (has_to_string<T>::value) {
+                return value.to_string();
+            } else if constexpr (is_std_formattable<T>::value) {
+                // Use std::format for standard types (4x faster than ostringstream)
+                return std::format("{}", value);
+            } else if constexpr (is_streamable<T>::value) {
+                // Fallback to ostringstream for non-formattable but streamable types
+                std::ostringstream oss;
+                oss << value;
+                return oss.str();
+            } else {
+                return "[unprintable]";
+            }
+        }
+
+        // Optimized variadic formatting with std::format
+        inline void append_args(std::string &result) {}
+
+        template <typename T, typename... Args>
+        inline void append_args(std::string &result, const T &first, const Args &...rest) {
+            result += format_single(first);
+            append_args(result, rest...);
+        }
+
+        // Helper to build message string
+        template <typename... Args> inline std::string build_message(const Args &...args) {
+            std::string result;
+            // Reserve space to avoid reallocations (estimate ~50 chars per arg)
+            result.reserve(sizeof...(args) * 50);
+            append_args(result, args...);
+            return result;
+        }
+#else
+        // Fallback: Use ostringstream (C++17 and earlier)
         inline void append_args(std::ostringstream &) {}
 
         template <typename T, typename... Args>
@@ -71,6 +124,14 @@ namespace echo {
             oss << stringify(first);
             append_args(oss, rest...);
         }
+
+        // Helper to build message string
+        template <typename... Args> inline std::string build_message(const Args &...args) {
+            std::ostringstream oss;
+            append_args(oss, args...);
+            return oss.str();
+        }
+#endif
 
     } // namespace detail
 

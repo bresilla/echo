@@ -319,6 +319,116 @@ void test_formatter_clone() {
     std::cout << "✓ Formatter cloning works\n";
 }
 
+void test_global_set_pattern() {
+    std::cout << "Testing global set_pattern()...\n";
+
+    // Clear all sinks
+    echo::clear_sinks();
+
+    // Create two test sinks
+    auto sink1 = std::make_shared<FormatterTestSink>();
+    auto sink2 = std::make_shared<FormatterTestSink>();
+
+    echo::add_sink(sink1);
+    echo::add_sink(sink2);
+
+    // Set a global pattern for all sinks
+    echo::set_pattern("{level} | {msg}");
+
+    // Log a message
+    echo::info("Global pattern test");
+
+    // Both sinks should have the same formatted message
+    assert(sink1->message_count() == 1 && "Sink 1 should have 1 message");
+    assert(sink2->message_count() == 1 && "Sink 2 should have 1 message");
+
+    std::string msg1 = sink1->get_message(0);
+    std::string msg2 = sink2->get_message(0);
+
+    assert(msg1.find("INFO | Global pattern test") != std::string::npos && "Sink 1 should use global pattern");
+    assert(msg2.find("INFO | Global pattern test") != std::string::npos && "Sink 2 should use global pattern");
+
+    std::cout << "  Sink 1: " << msg1 << "\n";
+    std::cout << "  Sink 2: " << msg2 << "\n";
+    std::cout << "✓ Global set_pattern() works\n";
+}
+
+void test_global_set_formatter() {
+    std::cout << "Testing global set_formatter()...\n";
+
+    // Clear all sinks
+    echo::clear_sinks();
+
+    // Create two test sinks
+    auto sink1 = std::make_shared<FormatterTestSink>();
+    auto sink2 = std::make_shared<FormatterTestSink>();
+
+    echo::add_sink(sink1);
+    echo::add_sink(sink2);
+
+    // Set a global custom formatter for all sinks
+    echo::set_formatter(std::make_shared<echo::CustomFormatter>([](const echo::LogRecord &rec) {
+        return "CUSTOM: " + std::string(echo::detail::level_name(rec.level)) + " - " + rec.message;
+    }));
+
+    // Log a message
+    echo::warn("Global formatter test");
+
+    // Both sinks should have the same formatted message
+    assert(sink1->message_count() == 1 && "Sink 1 should have 1 message");
+    assert(sink2->message_count() == 1 && "Sink 2 should have 1 message");
+
+    std::string msg1 = sink1->get_message(0);
+    std::string msg2 = sink2->get_message(0);
+
+    assert(msg1.find("CUSTOM: warning - Global formatter test") != std::string::npos &&
+           "Sink 1 should use global formatter");
+    assert(msg2.find("CUSTOM: warning - Global formatter test") != std::string::npos &&
+           "Sink 2 should use global formatter");
+
+    std::cout << "  Sink 1: " << msg1 << "\n";
+    std::cout << "  Sink 2: " << msg2 << "\n";
+    std::cout << "✓ Global set_formatter() works\n";
+}
+
+void test_global_formatter_override() {
+    std::cout << "Testing global formatter with per-sink override...\n";
+
+    // Clear all sinks
+    echo::clear_sinks();
+
+    // Create two test sinks
+    auto sink1 = std::make_shared<FormatterTestSink>();
+    auto sink2 = std::make_shared<FormatterTestSink>();
+
+    echo::add_sink(sink1);
+    echo::add_sink(sink2);
+
+    // Set a global pattern
+    echo::set_pattern("[GLOBAL] {level}: {msg}");
+
+    // Override sink2 with a custom formatter
+    sink2->set_formatter(std::make_shared<echo::CustomFormatter>(
+        [](const echo::LogRecord &rec) { return "[OVERRIDE] " + rec.message; }));
+
+    // Log a message
+    echo::error("Override test");
+
+    // Sink 1 should use global pattern, sink 2 should use override
+    assert(sink1->message_count() == 1 && "Sink 1 should have 1 message");
+    assert(sink2->message_count() == 1 && "Sink 2 should have 1 message");
+
+    std::string msg1 = sink1->get_message(0);
+    std::string msg2 = sink2->get_message(0);
+
+    assert(msg1.find("[GLOBAL] ERROR: Override test") != std::string::npos && "Sink 1 should use global pattern");
+    assert(msg2.find("[OVERRIDE] Override test") != std::string::npos && "Sink 2 should use override formatter");
+
+    std::cout << "  Sink 1 (global): " << msg1 << "\n";
+    std::cout << "  Sink 2 (override): " << msg2 << "\n";
+    std::cout << "✓ Global formatter with per-sink override works\n";
+}
+
 int main() {
     std::cout << "=== Echo Formatter System Tests ===\n\n";
 
@@ -332,6 +442,9 @@ int main() {
         test_formatter_with_sink();
         test_multiple_sinks_different_formatters();
         test_formatter_clone();
+        test_global_set_pattern();
+        test_global_set_formatter();
+        test_global_formatter_override();
 
         std::cout << "\n=== All formatter tests passed! ===\n";
         return 0;
