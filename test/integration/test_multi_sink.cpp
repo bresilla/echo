@@ -3,7 +3,6 @@
  * @brief Integration tests for multi-sink scenarios
  */
 
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #define ECHO_ENABLE_FILE_SINK
 #include <doctest/doctest.h>
 

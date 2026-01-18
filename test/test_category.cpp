@@ -3,9 +3,10 @@
  * @brief Test category-based filtering
  */
 
+#include <doctest/doctest.h>
+
 #include <echo/echo.hpp>
 
-#include <cassert>
 #include <iostream>
 #include <sstream>
 #include <vector>
@@ -50,243 +51,156 @@ class CategoryTestSink : public echo::Sink {
     }
 };
 
-void test_basic_category() {
-    std::cout << "Testing basic category logging...\n";
+TEST_CASE("Category filtering") {
+    SUBCASE("Basic category logging") {
+        // Clear all sinks and add test sink
+        echo::clear_sinks();
+        auto sink = std::make_shared<CategoryTestSink>();
+        echo::add_sink(sink);
 
-    // Clear all sinks and add test sink
-    echo::clear_sinks();
-    auto sink = std::make_shared<CategoryTestSink>();
-    echo::add_sink(sink);
+        // Log with categories
+        echo::category("network").info("Network message");
+        echo::category("database").warn("Database warning");
+        echo::category("app").error("App error");
 
-    // Log with categories
-    echo::category("network").info("Network message");
-    echo::category("database").warn("Database warning");
-    echo::category("app").error("App error");
-
-    // All messages should be logged (no filtering yet)
-    assert(sink->message_count() == 3 && "Should have 3 messages");
-
-    std::cout << "  Message 1: " << sink->get_message(0) << "\n";
-    std::cout << "  Message 2: " << sink->get_message(1) << "\n";
-    std::cout << "  Message 3: " << sink->get_message(2) << "\n";
-
-    std::cout << "✓ Basic category logging works\n";
-}
-
-void test_category_level_filtering() {
-    std::cout << "Testing category level filtering...\n";
-
-    // Clear all sinks and add test sink
-    echo::clear_sinks();
-    auto sink = std::make_shared<CategoryTestSink>();
-    echo::add_sink(sink);
-
-    // Clear any previous category levels
-    echo::clear_category_levels();
-
-    // Set category level: only warnings and above for "network"
-    echo::set_category_level("network", echo::Level::Warn);
-
-    // These should be filtered out
-    echo::category("network").trace("Network trace");
-    echo::category("network").debug("Network debug");
-    echo::category("network").info("Network info");
-
-    // These should pass
-    echo::category("network").warn("Network warning");
-    echo::category("network").error("Network error");
-
-    // Other categories should use global level (all pass)
-    echo::category("database").info("Database info");
-
-    assert(sink->message_count() == 3 && "Should have 3 messages (2 network + 1 database)");
-
-    std::cout << "  Passed messages:\n";
-    for (size_t i = 0; i < sink->message_count(); ++i) {
-        std::cout << "    " << sink->get_message(i) << "\n";
+        // All messages should be logged (no filtering yet)
+        CHECK(sink->message_count() == 3);
     }
 
-    std::cout << "✓ Category level filtering works\n";
-}
+    SUBCASE("Category level filtering") {
+        // Clear all sinks and add test sink
+        echo::clear_sinks();
+        auto sink = std::make_shared<CategoryTestSink>();
+        echo::add_sink(sink);
 
-void test_hierarchical_categories() {
-    std::cout << "Testing hierarchical categories...\n";
+        // Clear any previous category levels
+        echo::clear_category_levels();
 
-    // Clear all sinks and add test sink
-    echo::clear_sinks();
-    auto sink = std::make_shared<CategoryTestSink>();
-    echo::add_sink(sink);
+        // Set category level: only warnings and above for "network"
+        echo::set_category_level("network", echo::Level::Warn);
 
-    // Clear any previous category levels
-    echo::clear_category_levels();
+        // These should be filtered out
+        echo::category("network").trace("Network trace");
+        echo::category("network").debug("Network debug");
+        echo::category("network").info("Network info");
 
-    // Set level for parent category
-    echo::set_category_level("app.*", echo::Level::Warn);
+        // These should pass
+        echo::category("network").warn("Network warning");
+        echo::category("network").error("Network error");
 
-    // Child categories should inherit parent level
-    echo::category("app.network").info("Should be filtered");
-    echo::category("app.database").debug("Should be filtered");
-    echo::category("app.network").warn("Should pass");
-    echo::category("app.database").error("Should pass");
+        // Other categories should use global level (all pass)
+        echo::category("database").info("Database info");
 
-    // Non-matching categories should use global level
-    echo::category("system").info("Should pass");
-
-    assert(sink->message_count() == 3 && "Should have 3 messages");
-
-    std::cout << "  Passed messages:\n";
-    for (size_t i = 0; i < sink->message_count(); ++i) {
-        std::cout << "    " << sink->get_message(i) << "\n";
+        CHECK(sink->message_count() == 3);
     }
 
-    std::cout << "✓ Hierarchical categories work\n";
-}
+    SUBCASE("Hierarchical categories") {
+        // Clear all sinks and add test sink
+        echo::clear_sinks();
+        auto sink = std::make_shared<CategoryTestSink>();
+        echo::add_sink(sink);
 
-void test_wildcard_filtering() {
-    std::cout << "Testing wildcard filtering...\n";
+        // Clear any previous category levels
+        echo::clear_category_levels();
 
-    // Clear all sinks and add test sink
-    echo::clear_sinks();
-    auto sink = std::make_shared<CategoryTestSink>();
-    echo::add_sink(sink);
+        // Set level for parent category
+        echo::set_category_level("app.*", echo::Level::Warn);
 
-    // Clear any previous category levels
-    echo::clear_category_levels();
+        // Child categories should inherit parent level
+        echo::category("app.network").info("Should be filtered");
+        echo::category("app.database").debug("Should be filtered");
+        echo::category("app.network").warn("Should pass");
+        echo::category("app.database").error("Should pass");
 
-    // Set wildcard pattern
-    echo::set_category_level("app.*", echo::Level::Error);
+        // Non-matching categories should use global level
+        echo::category("system").info("Should pass");
 
-    // Only errors should pass for app.* categories
-    echo::category("app.network").info("Filtered");
-    echo::category("app.network").warn("Filtered");
-    echo::category("app.network").error("Should pass");
-
-    echo::category("app.database.mysql").info("Filtered");
-    echo::category("app.database.mysql").error("Should pass");
-
-    // Non-matching categories use global level
-    echo::category("system").info("Should pass");
-
-    assert(sink->message_count() == 3 && "Should have 3 messages");
-
-    std::cout << "  Passed messages:\n";
-    for (size_t i = 0; i < sink->message_count(); ++i) {
-        std::cout << "    " << sink->get_message(i) << "\n";
+        CHECK(sink->message_count() == 3);
     }
 
-    std::cout << "✓ Wildcard filtering works\n";
-}
+    SUBCASE("Wildcard filtering") {
+        // Clear all sinks and add test sink
+        echo::clear_sinks();
+        auto sink = std::make_shared<CategoryTestSink>();
+        echo::add_sink(sink);
 
-void test_specific_overrides_wildcard() {
-    std::cout << "Testing specific category overrides wildcard...\n";
+        // Clear any previous category levels
+        echo::clear_category_levels();
 
-    // Clear all sinks and add test sink
-    echo::clear_sinks();
-    auto sink = std::make_shared<CategoryTestSink>();
-    echo::add_sink(sink);
+        // Set wildcard pattern
+        echo::set_category_level("app.*", echo::Level::Error);
 
-    // Clear any previous category levels
-    echo::clear_category_levels();
+        // Only errors should pass for app.* categories
+        echo::category("app.network").info("Filtered");
+        echo::category("app.network").warn("Filtered");
+        echo::category("app.network").error("Should pass");
 
-    // Set wildcard pattern
-    echo::set_category_level("app.*", echo::Level::Error);
+        echo::category("app.database.mysql").info("Filtered");
+        echo::category("app.database.mysql").error("Should pass");
 
-    // Set specific category (should override wildcard)
-    echo::set_category_level("app.network", echo::Level::Debug);
+        // Non-matching categories use global level
+        echo::category("system").info("Should pass");
 
-    // app.network should use Debug level
-    echo::category("app.network").debug("Should pass");
-    echo::category("app.network").info("Should pass");
-
-    // app.database should use Error level from wildcard
-    echo::category("app.database").debug("Filtered");
-    echo::category("app.database").info("Filtered");
-    echo::category("app.database").error("Should pass");
-
-    assert(sink->message_count() == 3 && "Should have 3 messages");
-
-    std::cout << "  Passed messages:\n";
-    for (size_t i = 0; i < sink->message_count(); ++i) {
-        std::cout << "    " << sink->get_message(i) << "\n";
+        CHECK(sink->message_count() == 3);
     }
 
-    std::cout << "✓ Specific category overrides wildcard\n";
-}
+    SUBCASE("Specific category level") {
+        // Clear all sinks and add test sink
+        echo::clear_sinks();
+        auto sink = std::make_shared<CategoryTestSink>();
+        echo::add_sink(sink);
 
-void test_category_with_colors() {
-    std::cout << "Testing category with color methods...\n";
+        // Clear any previous category levels
+        echo::clear_category_levels();
 
-    // Clear all sinks and add test sink
-    echo::clear_sinks();
-    auto sink = std::make_shared<CategoryTestSink>();
-    echo::add_sink(sink);
+        // Set specific category level
+        echo::set_category_level("app.network", echo::Level::Warn);
 
-    // Clear any previous category levels
-    echo::clear_category_levels();
+        // app.network should use Warn level - debug/info filtered
+        echo::category("app.network").debug("Filtered");
+        echo::category("app.network").info("Filtered");
+        echo::category("app.network").warn("Should pass");
+        echo::category("app.network").error("Should pass");
 
-    // Log with colors
-    echo::category("network").info("Colored message").red();
-    echo::category("database").warn("Another colored message").green().bold();
+        // Other categories use global level
+        echo::category("other").info("Should pass");
 
-    assert(sink->message_count() == 2 && "Should have 2 messages");
-
-    std::cout << "  Message 1: " << sink->get_message(0) << "\n";
-    std::cout << "  Message 2: " << sink->get_message(1) << "\n";
-
-    std::cout << "✓ Category with colors works\n";
-}
-
-void test_get_categories() {
-    std::cout << "Testing get_categories()...\n";
-
-    // Clear any previous category levels
-    echo::clear_category_levels();
-
-    // Set some category levels
-    echo::set_category_level("network", echo::Level::Warn);
-    echo::set_category_level("database", echo::Level::Error);
-    echo::set_category_level("app.*", echo::Level::Debug);
-
-    // Get all categories
-    auto categories = echo::get_categories();
-
-    assert(categories.size() == 3 && "Should have 3 categories");
-
-    std::cout << "  Registered categories:\n";
-    for (const auto &cat : categories) {
-        std::cout << "    " << cat << "\n";
+        CHECK(sink->message_count() == 3);
     }
 
-    std::cout << "✓ get_categories() works\n";
-}
+    SUBCASE("Category with colors") {
+        // Clear all sinks and add test sink
+        echo::clear_sinks();
+        auto sink = std::make_shared<CategoryTestSink>();
+        echo::add_sink(sink);
 
-void test_category_proxy_name() {
-    std::cout << "Testing category_proxy::name()...\n";
+        // Clear any previous category levels
+        echo::clear_category_levels();
 
-    auto cat_proxy = echo::category("test.category");
-    assert(cat_proxy.name() == "test.category" && "Category name should match");
+        // Log with colors
+        echo::category("network").info("Colored message").red();
+        echo::category("database").warn("Another colored message").green().bold();
 
-    std::cout << "  Category name: " << cat_proxy.name() << "\n";
-    std::cout << "✓ category_proxy::name() works\n";
-}
+        CHECK(sink->message_count() == 2);
+    }
 
-int main() {
-    std::cout << "=== Echo Category Filtering Tests ===\n\n";
+    SUBCASE("get_categories") {
+        // Clear any previous category levels
+        echo::clear_category_levels();
 
-    try {
-        test_basic_category();
-        test_category_level_filtering();
-        test_hierarchical_categories();
-        test_wildcard_filtering();
-        test_specific_overrides_wildcard();
-        test_category_with_colors();
-        test_get_categories();
-        test_category_proxy_name();
+        // Set some category levels
+        echo::set_category_level("network", echo::Level::Warn);
+        echo::set_category_level("database", echo::Level::Error);
+        echo::set_category_level("app.*", echo::Level::Debug);
 
-        std::cout << "\n=== All category tests passed! ===\n";
-        return 0;
-    } catch (const std::exception &e) {
-        std::cerr << "Test failed with exception: " << e.what() << "\n";
-        return 1;
+        // Get all categories
+        auto categories = echo::get_categories();
+
+        CHECK(categories.size() == 3);
+    }
+
+    SUBCASE("category_proxy name") {
+        auto cat_proxy = echo::category("test.category");
+        CHECK(cat_proxy.name() == "test.category");
     }
 }

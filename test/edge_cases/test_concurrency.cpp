@@ -3,7 +3,6 @@
  * @brief Edge case tests for concurrent logging and thread safety
  */
 
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
 #include <echo/echo.hpp>

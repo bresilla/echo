@@ -1,3 +1,11 @@
+# Changelog
+
+## [0.0.25] - 2026-01-18
+
+### Build
+
+- Remove redundant compiler status messages
+
 ## [0.0.23] - 2026-01-07
 
 ### 🐛 Bug Fixes
@@ -45,8 +53,6 @@
 ### 🚀 Features
 
 - Enhance echo include functionality
-# Changelog
-
 ## [0.0.19] - 2026-01-05
 
 ### <!-- 0 -->⛰️  Features

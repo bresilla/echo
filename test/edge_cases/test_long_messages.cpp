@@ -3,7 +3,6 @@
  * @brief Edge case tests for very long messages
  */
 
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
 #include <echo/echo.hpp>
@@ -21,7 +20,7 @@ TEST_CASE("Very long messages") {
         // Should not crash, should fall back to heap
         CHECK_NOTHROW(echo::info(large_msg));
         CHECK_NOTHROW(echo::debug(large_msg));
-        CHECK_NOTHROW(echo(large_msg));
+        CHECK_NOTHROW(echo::print(large_msg));
     }
 
     SUBCASE("Very large message (>64KB)") {
