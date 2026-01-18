@@ -1,11 +1,12 @@
 SHELL := /bin/bash
 
 # ==================================================================================================
-# Project configuration
+# Project configuration (parsed from PROJECT file)
 # ==================================================================================================
-PROJECT_NAME := $(shell cat NAME 2>/dev/null | tr -d '[:space:]')
+PROJECT_NAME := $(shell sed -n '/^[[:space:]]*[^#\[[:space:]]/p' PROJECT | head -1 | tr -d '[:space:]')
+PROJECT_VERSION := $(shell sed -n '/^[[:space:]]*[^#\[[:space:]]/p' PROJECT | sed -n '2p' | tr -d '[:space:]')
 ifeq ($(PROJECT_NAME),)
-    $(error Error: NAME file not found or empty)
+    $(error Error: PROJECT file not found or invalid)
 endif
 
 PROJECT_CAP  := $(shell echo $(PROJECT_NAME) | tr '[:lower:]' '[:upper:]')
@@ -25,6 +26,15 @@ ifdef CC
         CMAKE_COMPILER_FLAG := -DCOMPILER=clang
         XMAKE_COMPILER_FLAG := --toolchain=clang
     endif
+endif
+
+# ==================================================================================================
+# Big transfer tests: BIG_TRANSFER=1 (optional, enables 100MB+ tests)
+# ==================================================================================================
+BIG_TRANSFER ?=
+ifdef BIG_TRANSFER
+    CMAKE_BIG_TRANSFER_FLAG := -D$(PROJECT_CAP)_BIG_TRANSFER=ON
+    XMAKE_BIG_TRANSFER_FLAG := --big_transfer=y
 endif
 
 # ==================================================================================================
@@ -65,8 +75,8 @@ ifeq ($(BUILD_SYSTEM),zig)
 else ifeq ($(BUILD_SYSTEM),xmake)
     # XMake build system
     CMD_BUILD       := xmake -j$(shell nproc) -y 2>&1 | tee "$(TOP_DIR)/.complog"
-    CMD_CONFIG      := xmake f --examples=y --tests=y $(XMAKE_COMPILER_FLAG) -y 2>&1 | tee "$(TOP_DIR)/.complog" && xmake project -k compile_commands
-    CMD_RECONFIG    := rm -rf .xmake $(BUILD_DIR) && xmake f --examples=y --tests=y $(XMAKE_COMPILER_FLAG) -c -y 2>&1 | tee "$(TOP_DIR)/.complog" && xmake project -k compile_commands
+    CMD_CONFIG      := xmake f --examples=y --tests=y $(XMAKE_COMPILER_FLAG) $(XMAKE_BIG_TRANSFER_FLAG) -y 2>&1 | tee "$(TOP_DIR)/.complog" && xmake project -k compile_commands
+    CMD_RECONFIG    := rm -rf .xmake $(BUILD_DIR) && xmake f --examples=y --tests=y $(XMAKE_COMPILER_FLAG) $(XMAKE_BIG_TRANSFER_FLAG) -c -y 2>&1 | tee "$(TOP_DIR)/.complog" && xmake project -k compile_commands
     CMD_CLEAN       := xmake clean -a
     CMD_TEST        := xmake test
     CMD_TEST_SINGLE  = ./build/linux/$$(uname -m)/release/$(TEST)
@@ -75,8 +85,8 @@ else ifeq ($(BUILD_SYSTEM),xmake)
 else
     # CMake build system (default)
     CMD_BUILD       := cd $(BUILD_DIR) && make -j$(shell nproc) 2>&1 | tee "$(TOP_DIR)/.complog"
-    CMD_CONFIG      := mkdir -p $(BUILD_DIR) && cd $(BUILD_DIR) && if [ -f Makefile ]; then make clean; fi && cmake -Wno-dev $(CMAKE_COMPILER_FLAG) -D$(PROJECT_CAP)_BUILD_EXAMPLES=ON -D$(PROJECT_CAP)_ENABLE_TESTS=ON .. 2>&1 | tee "$(TOP_DIR)/.complog"
-    CMD_RECONFIG    := rm -rf $(BUILD_DIR) && mkdir -p $(BUILD_DIR) && cd $(BUILD_DIR) && cmake -Wno-dev $(CMAKE_COMPILER_FLAG) -D$(PROJECT_CAP)_BUILD_EXAMPLES=ON -D$(PROJECT_CAP)_ENABLE_TESTS=ON .. 2>&1 | tee "$(TOP_DIR)/.complog"
+    CMD_CONFIG      := mkdir -p $(BUILD_DIR) && cd $(BUILD_DIR) && if [ -f Makefile ]; then make clean; fi && cmake -Wno-dev $(CMAKE_COMPILER_FLAG) $(CMAKE_BIG_TRANSFER_FLAG) -D$(PROJECT_CAP)_BUILD_EXAMPLES=ON -D$(PROJECT_CAP)_ENABLE_TESTS=ON .. 2>&1 | tee "$(TOP_DIR)/.complog"
+    CMD_RECONFIG    := rm -rf $(BUILD_DIR) && mkdir -p $(BUILD_DIR) && cd $(BUILD_DIR) && cmake -Wno-dev $(CMAKE_COMPILER_FLAG) $(CMAKE_BIG_TRANSFER_FLAG) -D$(PROJECT_CAP)_BUILD_EXAMPLES=ON -D$(PROJECT_CAP)_ENABLE_TESTS=ON .. 2>&1 | tee "$(TOP_DIR)/.complog"
     CMD_CLEAN       := rm -rf $(BUILD_DIR)
     CMD_TEST        := cd $(BUILD_DIR) && ctest --verbose --output-on-failure
     CMD_TEST_SINGLE  = $(BUILD_DIR)/$(TEST)
@@ -101,7 +111,7 @@ endef
 # Info
 # ==================================================================================================
 $(info ------------------------------------------)
-$(info Project: $(PROJECT_NAME))
+$(info Project: $(PROJECT_NAME) v$(PROJECT_VERSION))
 $(info Build System: $(BUILD_SYSTEM))
 $(info Compiler: $(CC))
 $(info ------------------------------------------)
@@ -160,62 +170,6 @@ test:
 t: test
 
 # ==================================================================================================
-# Sanitizer testing
-# ==================================================================================================
-SANITIZER ?=
-
-test-asan:
-	@echo "Running tests with AddressSanitizer..."
-ifeq ($(BUILD_SYSTEM),cmake)
-	@rm -rf $(BUILD_DIR) && mkdir -p $(BUILD_DIR)
-	@cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=Debug \
-		-DCMAKE_CXX_FLAGS="-fsanitize=address -fno-omit-frame-pointer -g" \
-		-D$(PROJECT_CAP)_BUILD_EXAMPLES=OFF -D$(PROJECT_CAP)_ENABLE_TESTS=ON .. && make -j$(shell nproc)
-	@cd $(BUILD_DIR) && ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ctest --output-on-failure
-else ifeq ($(BUILD_SYSTEM),xmake)
-	@xmake f --mode=debug --cxflags="-fsanitize=address -fno-omit-frame-pointer -g" --ldflags="-fsanitize=address" -c -y
-	@xmake -j$(shell nproc)
-	@ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 xmake test
-else
-	@echo "Sanitizer testing not yet supported for $(BUILD_SYSTEM)"
-endif
-
-test-tsan:
-	@echo "Running tests with ThreadSanitizer..."
-ifeq ($(BUILD_SYSTEM),cmake)
-	@rm -rf $(BUILD_DIR) && mkdir -p $(BUILD_DIR)
-	@cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=Debug \
-		-DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer -g" \
-		-D$(PROJECT_CAP)_BUILD_EXAMPLES=OFF -D$(PROJECT_CAP)_ENABLE_TESTS=ON .. && make -j$(shell nproc)
-	@cd $(BUILD_DIR) && TSAN_OPTIONS=halt_on_error=1 ctest --output-on-failure
-else ifeq ($(BUILD_SYSTEM),xmake)
-	@xmake f --mode=debug --cxflags="-fsanitize=thread -fno-omit-frame-pointer -g" --ldflags="-fsanitize=thread" -c -y
-	@xmake -j$(shell nproc)
-	@TSAN_OPTIONS=halt_on_error=1 xmake test
-else
-	@echo "Sanitizer testing not yet supported for $(BUILD_SYSTEM)"
-endif
-
-test-ubsan:
-	@echo "Running tests with UndefinedBehaviorSanitizer..."
-ifeq ($(BUILD_SYSTEM),cmake)
-	@rm -rf $(BUILD_DIR) && mkdir -p $(BUILD_DIR)
-	@cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=Debug \
-		-DCMAKE_CXX_FLAGS="-fsanitize=undefined -fno-omit-frame-pointer -g" \
-		-D$(PROJECT_CAP)_BUILD_EXAMPLES=OFF -D$(PROJECT_CAP)_ENABLE_TESTS=ON .. && make -j$(shell nproc)
-	@cd $(BUILD_DIR) && UBSAN_OPTIONS=halt_on_error=1 ctest --output-on-failure
-else ifeq ($(BUILD_SYSTEM),xmake)
-	@xmake f --mode=debug --cxflags="-fsanitize=undefined -fno-omit-frame-pointer -g" --ldflags="-fsanitize=undefined" -c -y
-	@xmake -j$(shell nproc)
-	@UBSAN_OPTIONS=halt_on_error=1 xmake test
-else
-	@echo "Sanitizer testing not yet supported for $(BUILD_SYSTEM)"
-endif
-
-test-sanitizers: test-asan test-tsan test-ubsan
-	@echo "All sanitizer tests completed!"
-
-# ==================================================================================================
 # Help
 # ==================================================================================================
 help:
@@ -228,15 +182,12 @@ help:
 	@echo "  reconfig     Full reconfigure (cleans everything including cache)"
 	@echo "  run          Run the main executable"
 	@echo "  test         Run tests (TEST=<name> to run specific test)"
-	@echo "  test-asan    Run tests with AddressSanitizer"
-	@echo "  test-tsan    Run tests with ThreadSanitizer"
-	@echo "  test-ubsan   Run tests with UndefinedBehaviorSanitizer"
-	@echo "  test-sanitizers  Run all sanitizer tests"
 	@echo "  docs         Build documentation (TYPE=mdbook|doxygen)"
 	@echo "  release      Create a new release (TYPE=patch|minor|major)"
 	@echo
 	@echo "Build system: $(BUILD_SYSTEM) (override with BUILD_SYSTEM=cmake|xmake|zig)"
 	@echo "Compiler:     CC=gcc|clang (for cmake/xmake only)"
+	@echo "Big tests:    BIG_TRANSFER=1 (enable 100MB+ transfer tests)"
 	@echo
 
 h: help
@@ -251,10 +202,6 @@ ifeq ($(TYPE),mdbook)
 	@git add --all && git commit -m "docs: building website/mdbook"
 else ifeq ($(TYPE),doxygen)
 	@command -v doxygen >/dev/null 2>&1 || { echo "doxygen is not installed. Please install it first."; exit 1; }
-	@echo "Generating Doxygen documentation..."
-	@doxygen Doxyfile
-	@echo "Documentation generated in docs/doxygen/html/"
-	@echo "Open docs/doxygen/html/index.html in your browser"
 else
 	$(error Invalid documentation type. Use 'make docs TYPE=mdbook' or 'make docs TYPE=doxygen')
 endif

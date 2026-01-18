@@ -6,7 +6,6 @@
  * conversion methods: .pretty(), .print(), .to_string(), and operator<<
  */
 
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
 #include <echo/echo.hpp>

@@ -3,7 +3,6 @@
  * @brief Edge case tests for null, empty, and invalid inputs
  */
 
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
 #include <echo/echo.hpp>
